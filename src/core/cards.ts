@@ -1,0 +1,64 @@
+import type { KuramochiInformationCard, KuramochiVariantId } from "./types.js";
+
+export const KURAMOCHI_CARDS: Record<KuramochiVariantId, KuramochiInformationCard> = {
+  A: {
+    id: "A",
+    title: "倉持A――観測継続状態",
+    summary: "観測室へ入り、時角干渉観測器を調べ続けた時間状態。真相を最も多く知る一方、猟犬への曝露も最も深い。",
+    continuityEvidence: [
+      "観測開始直前までの記憶が詳細",
+      "冬城の最終記録を所持",
+      "観測器の停止手順を理解",
+      "身体の一部に青黒い汚染"
+    ],
+    strengths: [
+      "観測器と単一固定機構の知識が多い",
+      "封鎖・停止の成功率を高められる"
+    ],
+    risks: [
+      "猟犬に感知されている可能性が高い",
+      "帰還させると追跡経路も現実へ近づく"
+    ],
+    firstContactClue: "single_fixation_blueprint"
+  },
+  B: {
+    id: "B",
+    title: "倉持B――撤退状態",
+    summary: "異常を察知し、雨声荘から脱出しようとした時間状態。身体状態は最も安定するが、観測室以降の記憶が少ない。",
+    continuityEvidence: [
+      "倉持固有の負傷が元の調査記録と一致",
+      "私物と工具の摩耗が連続",
+      "曲面スロープを通る安全な出口を把握",
+      "送信音声の一部とは矛盾"
+    ],
+    strengths: [
+      "身体的連続性と生存可能性が高い",
+      "安全な脱出経路を知っている"
+    ],
+    risks: [
+      "真相・停止手順の知識が少ない",
+      "榊との記憶が一部欠落している"
+    ],
+    firstContactClue: "kuramochi_injury_continuity"
+  },
+  C: {
+    id: "C",
+    title: "倉持C――救援要請状態",
+    summary: "榊や外部へ助けを求め続けた時間状態。人間関係の記憶が最も明確だが、自分だけが本物だと強く主張する。",
+    continuityEvidence: [
+      "榊しか知らない私的な言葉を記憶",
+      "送信音声の内容と最も一致",
+      "榊との直前の会話を詳細に再現",
+      "他の倉持を閉じることへ強く抵抗"
+    ],
+    strengths: [
+      "関係記憶と人格の連続性が高い",
+      "外部との連絡経緯を説明できる"
+    ],
+    risks: [
+      "観測器に救援行動を反復させられている可能性",
+      "複数固定を強く求め、判断を揺らしやすい"
+    ],
+    firstContactClue: "kuramochi_sakaki_memory"
+  }
+};

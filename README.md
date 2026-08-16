@@ -126,9 +126,11 @@ src/logging.ts       任意の外部送信
 src/core/            診断・物語・採点・エンディングのコア
 scripts/             ビルド・配信・検査
 reports/             コアの経路探索結果
-tests/               自動検査
-docs/                ビルド済みGitHub Pagesサイト
+Tests/               自動検査
+Docs/                ビルド済みGitHub Pagesサイト
 ```
+
+実際のフォルダ名は小文字です：`tests/`、`docs/`。
 
 ## 診断ロジック
 
