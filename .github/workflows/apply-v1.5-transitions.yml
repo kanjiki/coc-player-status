@@ -29,84 +29,38 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-
           app_path = Path('src/app.ts')
           app = app_path.read_text(encoding='utf-8')
-
           old_import = 'import { READ_ALOUD_TEXT } from "./core/readAloud.js";'
           new_import = old_import + '\nimport { getReadAloudTransition } from "./core/readAloudTransitions.js";'
           if new_import not in app:
               if old_import not in app:
                   raise SystemExit('readAloud import not found')
               app = app.replace(old_import, new_import, 1)
-
-          old_fn = '''function readAloudMarkup(scene: ResolvedScene): string {
-            const text = READ_ALOUD_TEXT[scene.slotId] ?? scene.body;
-            const paragraphs = text.split(/\\n\\s*\\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
-            return `<div class="read-aloud-copy">${paragraphs.map((paragraph) => `<p class="scene-body">${escapeHtml(paragraph)}</p>`).join("")}</div>`;
-          }'''
-          new_fn = '''function readAloudMarkup(scene: ResolvedScene, state: AppState): string {
-            const bridge = getReadAloudTransition(state);
-            const base = READ_ALOUD_TEXT[scene.slotId] ?? scene.body;
-            const text = [bridge, base].filter(Boolean).join("\\n\\n");
-            const paragraphs = text.split(/\\n\\s*\\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
-            return `<div class="read-aloud-copy">${paragraphs.map((paragraph) => `<p class="scene-body">${escapeHtml(paragraph)}</p>`).join("")}</div>`;
-          }'''
+          old_fn = 'function readAloudMarkup(scene: ResolvedScene): string {\n  const text = READ_ALOUD_TEXT[scene.slotId] ?? scene.body;\n  const paragraphs = text.split(/\\n\\s*\\n/).map((paragraph) => paragraph.trim()).filter(Boolean);\n  return `<div class="read-aloud-copy">${paragraphs.map((paragraph) => `<p class="scene-body">${escapeHtml(paragraph)}</p>`).join("")}</div>`;\n}'
+          new_fn = 'function readAloudMarkup(scene: ResolvedScene, state: AppState): string {\n  const bridge = getReadAloudTransition(state);\n  const base = READ_ALOUD_TEXT[scene.slotId] ?? scene.body;\n  const text = [bridge, base].filter(Boolean).join("\\n\\n");\n  const paragraphs = text.split(/\\n\\s*\\n/).map((paragraph) => paragraph.trim()).filter(Boolean);\n  return `<div class="read-aloud-copy">${paragraphs.map((paragraph) => `<p class="scene-body">${escapeHtml(paragraph)}</p>`).join("")}</div>`;\n}'
           if old_fn not in app:
               raise SystemExit('readAloudMarkup function not found')
           app = app.replace(old_fn, new_fn, 1)
-
-          old_call = '${readAloudMarkup(scene)}'
-          new_call = '${readAloudMarkup(scene, session.state)}'
-          if old_call not in app:
+          if '${readAloudMarkup(scene)}' not in app:
               raise SystemExit('readAloudMarkup call not found')
-          app = app.replace(old_call, new_call, 1)
+          app = app.replace('${readAloudMarkup(scene)}', '${readAloudMarkup(scene, session.state)}', 1)
           app_path.write_text(app, encoding='utf-8')
-
           narration_path = Path('src/core/readAloud.ts')
           narration = narration_path.read_text(encoding='utf-8')
-
-          old_m05_open = '''  M05: `古い図面と現在の間取りを並べていくうちに、数字が合わない場所が見つかる。
-
-二階北側。
-
-建物の外から測った長さに対して、室内側の寸法が約二メートル足りない。
-
-図面をよく見ると、その場所だけ線が何度も引き直されている。元は部屋番号らしき文字もあったようだが、黒く塗り潰されている。
-
-現地へ上がり、該当する壁を叩く。'''
-          new_m05_open = '''  M05: `二階北側へ上がる。
-
-建物の外から測った長さに対して、室内側の寸法が約二メートル足りない。
-
-廊下の端から距離を取り直しても、数字は変わらない。
-
-該当する壁を叩く。'''
-          if old_m05_open not in narration:
+          old_m05 = '  M05: `古い図面と現在の間取りを並べていくうちに、数字が合わない場所が見つかる。\n\n二階北側。\n\n建物の外から測った長さに対して、室内側の寸法が約二メートル足りない。\n\n図面をよく見ると、その場所だけ線が何度も引き直されている。元は部屋番号らしき文字もあったようだが、黒く塗り潰されている。\n\n現地へ上がり、該当する壁を叩く。'
+          new_m05 = '  M05: `二階北側へ上がる。\n\n建物の外から測った長さに対して、室内側の寸法が約二メートル足りない。\n\n廊下の端から距離を取り直しても、数字は変わらない。\n\n該当する壁を叩く。'
+          if old_m05 not in narration:
               raise SystemExit('M05 fixed blueprint narration not found')
-          narration = narration.replace(old_m05_open, new_m05_open, 1)
-
-          old_m10_open = '''  M10: `旧洗濯室には、大きな鏡が一枚残されている。
-
-曇った鏡面に懐中電灯を向けると、人影が映った。
-
-あなた自身だ。
-
-服装も、持っている道具も同じ。
-
-だが鏡の中のあなたは、こちらがしていない行動について話し始める。'''
-          new_m10_open = '''  M10: `現れた人物は、あなた自身と同じ姿をしている。
-
-服装も、持っている道具も同じ。
-
-だが、その人物は、こちらがしていない行動について話し始める。'''
-          if old_m10_open not in narration:
+          narration = narration.replace(old_m05, new_m05, 1)
+          old_m10 = '  M10: `旧洗濯室には、大きな鏡が一枚残されている。\n\n曇った鏡面に懐中電灯を向けると、人影が映った。\n\nあなた自身だ。\n\n服装も、持っている道具も同じ。\n\nだが鏡の中のあなたは、こちらがしていない行動について話し始める。'
+          new_m10 = '  M10: `現れた人物は、あなた自身と同じ姿をしている。\n\n服装も、持っている道具も同じ。\n\nだが、その人物は、こちらがしていない行動について話し始める。'
+          if old_m10 not in narration:
               raise SystemExit('M10 mirror-specific narration not found')
-          narration = narration.replace(old_m10_open, new_m10_open, 1)
+          narration = narration.replace(old_m10, new_m10, 1)
           narration = narration.replace('鏡の中の自分は、そうした食い違いを気にした様子もなく、地下の奥を指差す。', 'その人物は、そうした食い違いを気にした様子もなく、地下の奥を指差す。', 1)
           narration = narration.replace('鏡の中の人物は、それ以上は何も言わず、こちらを見返している。', 'もう一人のあなたは、それ以上は何も言わず、こちらを見返している。', 1)
           narration_path.write_text(narration, encoding='utf-8')
-
           for file_name in ('package.json', 'public/site-config.js'):
               path = Path(file_name)
               text = path.read_text(encoding='utf-8')
@@ -114,29 +68,11 @@ jobs:
               if changed == text:
                   raise SystemExit(f'version marker missing in {file_name}')
               path.write_text(changed, encoding='utf-8')
-
-          Path('reports/revision-v1.5.md').write_text('''# 分岐専用つなぎ v1.5
-
-Scene 1→24の通読監査を受け、直前Sceneの帰結を次Scene冒頭へ渡すKP読み上げ用のtransition narrationを追加した。
-
-## 方針
-- 新しい事実は作らず、AppStateに確定済みの選択・フラグ・ルート・Hound段階・倉持固定状態だけを読む。
-- 共通本文の前に2〜5文程度の短いつなぎを挿入する。
-- 特に M05、M10、L04、S02 の状態矛盾を解消する。
-- ダイス失敗による負傷、同行者退避、H2以上の追跡継続、一時扉への侵入も次Sceneへ反映する。
-- 採点、選択肢、状態遷移、Endingロジックは変更しない。
-
-## 重点接続
-- L02→M05: 図面を取得していないルートを既成事実化しない。
-- M07→M10: 未来の声への対応によって「別の自分」の出現方法を変える。
-- M16→L04: 救出・回路遮断・両立・局地封鎖をそれぞれ受ける。
-- S03→S02: 単独固定・固定なし・複数固定を別々に描写する。
-''', encoding='utf-8')
+          report = '# 分岐専用つなぎ v1.5\n\nScene 1→24の通読監査を受け、直前Sceneの帰結を次Scene冒頭へ渡すKP読み上げ用transition narrationを追加した。\n\n## 方針\n- 新しい事実は作らず、AppStateに確定済みの選択・フラグ・ルート・Hound段階・倉持固定状態だけを読む。\n- 共通本文の前に2〜5文程度の短いつなぎを挿入する。\n- 特に M05、M10、L04、S02 の状態矛盾を解消する。\n- ダイス失敗による負傷、同行者退避、H2以上の追跡継続、一時扉への侵入も次Sceneへ反映する。\n- 採点、選択肢、状態遷移、Endingロジックは変更しない。\n'
+          Path('reports/revision-v1.5.md').write_text(report, encoding='utf-8')
           PY
-
           npm install --no-audit --no-fund
           npm run check
-
           rm -f .github/workflows/apply-v1.5-transitions.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
