@@ -1,0 +1,1 @@
+v1.2 opening clarification and allocation-response removal deployment trigger.
