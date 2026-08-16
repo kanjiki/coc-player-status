@@ -28,7 +28,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat bundle/source.part*.b64 | base64 --decode > /tmp/coc-status-source.tar.gz
+          cat \
+            bundle/source.part00.b64 bundle/source.part01.b64 bundle/source.part02.b64 \
+            bundle/source.part03.b64 bundle/source.part04.b64 bundle/source.part05.b64 \
+            bundle/source.part06.b64 bundle/source.part07a.b64 bundle/source.part07b.b64 \
+            bundle/source.part07c.b64 bundle/source.part07d.b64 bundle/source.part08.b64 \
+            | base64 --decode > /tmp/coc-status-source.tar.gz
           tar -xzf /tmp/coc-status-source.tar.gz -C .
           rm -rf bundle
           git config user.name "github-actions[bot]"
