@@ -166,6 +166,7 @@ export interface HistoryEntry {
   diceRoll?: number;
   snapshotHash: string;
   response?: ResponseMetadata;
+  durationMs?: number;
 }
 
 export interface AppState {

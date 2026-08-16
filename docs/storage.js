@@ -18,6 +18,8 @@ export function loadSession() {
         if (parsed.schemaVersion !== 1 || !parsed.state || !parsed.phase || !Array.isArray(parsed.snapshots)) {
             return null;
         }
+        if (!parsed.startedAt)
+            parsed.startedAt = parsed.updatedAt ?? new Date().toISOString();
         return parsed;
     }
     catch (error) {

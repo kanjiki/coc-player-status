@@ -1,6 +1,6 @@
 {
   "name": "coc-status-github-pages",
-  "version": "1.6.0-beta.1",
+  "version": "1.6.1-beta.1",
   "private": true,
   "type": "module",
   "description": "CoC探索者ステータス診断『その角を曲がる前に』GitHub Pages版",

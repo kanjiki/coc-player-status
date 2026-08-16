@@ -33,7 +33,7 @@ import { READ_ALOUD_TEXT } from "./core/readAloud.js";
 import { getReadAloudTransition } from "./core/readAloudTransitions.js";
 import { SCENE_BY_SLOT } from "./core/scenes.js";
 import type { AppState, ChoiceDefinition, DiagnosticWeights, EndingDefinition, ResolvedScene, ResponseMetadata } from "./core/types.js";
-import { sendCompletedDiagnosis, sendOptionalSurvey } from "./logging.js";
+import { sendCompletedDiagnosis, sendFunnelEvent, sendOptionalSurvey } from "./logging.js";
 import {
   clearAllLocalData,
   clearSession,
@@ -57,6 +57,42 @@ const debugMode = new URLSearchParams(location.search).get("debug") === "1";
 let session: PersistedSession | null = loadSession();
 let pageMode: "landing" | "session" = "landing";
 let toastCounter = 0;
+let sceneActiveAccumulatedMs = 0;
+let sceneActiveStartedAt: number | null = null;
+
+function beginSceneTiming(): void {
+  sceneActiveAccumulatedMs = 0;
+  sceneActiveStartedAt = document.visibilityState === "visible" ? Date.now() : null;
+}
+
+function pauseSceneTiming(): void {
+  if (sceneActiveStartedAt !== null) {
+    sceneActiveAccumulatedMs += Math.max(0, Date.now() - sceneActiveStartedAt);
+    sceneActiveStartedAt = null;
+  }
+}
+
+function resumeSceneTiming(): void {
+  if (pageMode === "session" && session?.phase === "scene" && sceneActiveStartedAt === null) {
+    sceneActiveStartedAt = Date.now();
+  }
+}
+
+function currentSceneDurationMs(): number {
+  return sceneActiveAccumulatedMs + (sceneActiveStartedAt === null ? 0 : Math.max(0, Date.now() - sceneActiveStartedAt));
+}
+
+function sessionElapsedSec(): number {
+  if (!session?.startedAt) return 0;
+  const started = Date.parse(session.startedAt);
+  return Number.isFinite(started) ? Math.max(0, Math.round((Date.now() - started) / 1000)) : 0;
+}
+
+function deviceClass(): string {
+  const ua = navigator.userAgent;
+  if (/Mobi|Android|iPhone|iPad/i.test(ua)) return "mobile";
+  return "desktop";
+}
 
 const UI_LABELS: Record<ResolvedScene["ui"], string> = {
   cards: "行動選択",
@@ -122,6 +158,7 @@ function buildSession(): PersistedSession {
     state: createInitialState(randomSeed()),
     snapshots: [],
     pendingOutcome: null,
+    startedAt: currentDateTime(),
     completedAt: null,
     updatedAt: currentDateTime()
   };
@@ -514,6 +551,7 @@ function renderResponseInterface(scene: ResolvedScene, state: AppState): string 
 
 function renderScene(): void {
   if (!session) return renderLanding();
+  beginSceneTiming();
   const scene = resolveScene(session.state);
   document.title = `${scene.title}｜${APP_CONFIG.scenarioTitle}`;
   app.innerHTML = `
@@ -752,6 +790,13 @@ function startNew(): void {
   session = buildSession();
   pageMode = "session";
   persist();
+  void sendFunnelEvent(APP_CONFIG, session.state.sessionSeed, {
+    event: "session_started",
+    sceneIndex: 1,
+    slotId: String(session.state.story.currentSlot),
+    elapsedSec: 0,
+    deviceClass: deviceClass()
+  });
   renderScene();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -764,6 +809,7 @@ function resumeSession(): void {
 }
 
 function goHome(): void {
+  pauseSceneTiming();
   pageMode = "landing";
   renderLanding();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1046,10 +1092,21 @@ function requestChoice(choiceId: string, responseMetadata: ResponseMetadata = { 
 
 function commitChoice(choiceId: string, followUpOptionId?: string, responseMetadata: ResponseMetadata = { kind: "choice" }, responseSummary?: string): void {
   if (!session) return;
+  const sceneDurationMs = Math.round(currentSceneDurationMs());
+  pauseSceneTiming();
   const snapshot = cloneState(session.state);
   const result = applyChoice(session.state, choiceId, followUpOptionId, undefined, responseMetadata);
   session.snapshots.push(snapshot);
   session.state = result.state;
+  const historyEntry = session.state.history.at(-1);
+  if (historyEntry) historyEntry.durationMs = sceneDurationMs;
+  void sendFunnelEvent(APP_CONFIG, session.state.sessionSeed, {
+    event: "scene_answered",
+    sceneIndex: session.state.history.length,
+    slotId: result.scene.slotId,
+    elapsedSec: sessionElapsedSec(),
+    deviceClass: deviceClass()
+  });
   const pending: PendingOutcome = {
     slotId: result.scene.slotId,
     sceneTitle: result.scene.title,
@@ -1075,6 +1132,13 @@ function nextScene(): void {
     session.phase = "result";
     session.completedAt ??= currentDateTime();
     persist();
+    void sendFunnelEvent(APP_CONFIG, session.state.sessionSeed, {
+      event: "result_viewed",
+      sceneIndex: session.state.history.length,
+      slotId: "S02",
+      elapsedSec: sessionElapsedSec(),
+      deviceClass: deviceClass()
+    });
     renderResult();
   } else {
     session.phase = "scene";
@@ -1216,7 +1280,10 @@ function exportLog(): void {
 
 async function maybeSendCompletedDiagnosis(ending: EndingDefinition, abilities: readonly AbilityResult[]): Promise<void> {
   if (!session || !isRemoteCollectionEnabled() || wasSessionSent(session.state.sessionSeed)) return;
-  const sent = await sendCompletedDiagnosis(APP_CONFIG, session.state, ending, abilities);
+  const sent = await sendCompletedDiagnosis(APP_CONFIG, session.state, ending, abilities, {
+    startedAt: session.startedAt,
+    completedAt: session.completedAt
+  });
   if (sent) markSessionSent(session.state.sessionSeed);
 }
 
@@ -1320,3 +1387,9 @@ document.addEventListener("keydown", (event) => {
 });
 
 render();
+
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") pauseSceneTiming();
+  else resumeSceneTiming();
+});

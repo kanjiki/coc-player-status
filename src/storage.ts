@@ -33,6 +33,7 @@ export interface PersistedSession {
   state: AppState;
   snapshots: AppState[];
   pendingOutcome: PendingOutcome | null;
+  startedAt: string;
   completedAt: string | null;
   updatedAt: string;
 }
@@ -53,6 +54,7 @@ export function loadSession(): PersistedSession | null {
     if (parsed.schemaVersion !== 1 || !parsed.state || !parsed.phase || !Array.isArray(parsed.snapshots)) {
       return null;
     }
+    if (!parsed.startedAt) parsed.startedAt = parsed.updatedAt ?? new Date().toISOString();
     return parsed as PersistedSession;
   } catch (error) {
     console.warn("保存済み診断を読み込めませんでした", error);

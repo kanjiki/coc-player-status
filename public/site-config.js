@@ -5,7 +5,7 @@
 window.APP_CONFIG = {
   appName: "CoC探索者ステータス診断",
   scenarioTitle: "その角を曲がる前に",
-  version: "1.6.0-beta.1",
+  version: "1.6.1-beta.1",
   dataEndpoint: "https://script.google.com/macros/s/AKfycbyRW3XxKp0n1RnY-8csXnxlCt25X-vpOfFslHCtc0_Sh68nInxAGJ1Z-MCEtxV9CyIY/exec",
   collectDiagnostics: true,
   shareUrl: "",

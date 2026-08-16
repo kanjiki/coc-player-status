@@ -16,7 +16,13 @@ async function postPayload(config, payload) {
         return false;
     }
 }
-export function sendCompletedDiagnosis(config, state, ending, abilities) {
+export function sendCompletedDiagnosis(config, state, ending, abilities, timing) {
+    const completedAt = timing?.completedAt ?? new Date().toISOString();
+    const startedMs = timing?.startedAt ? Date.parse(timing.startedAt) : NaN;
+    const completedMs = Date.parse(completedAt);
+    const durationSec = Number.isFinite(startedMs) && Number.isFinite(completedMs)
+        ? Math.max(0, Math.round((completedMs - startedMs) / 1000))
+        : undefined;
     return postPayload(config, {
         event: "diagnosis_completed",
         schemaVersion: 1,
@@ -24,6 +30,9 @@ export function sendCompletedDiagnosis(config, state, ending, abilities) {
         coreVersion: "0.6.0",
         recordedAt: new Date().toISOString(),
         sessionId: state.sessionSeed,
+        ...(timing?.startedAt ? { startedAt: timing.startedAt } : {}),
+        completedAt,
+        ...(durationSec !== undefined ? { durationSec } : {}),
         history: state.history,
         finalState: {
             story: state.story,
@@ -50,6 +59,20 @@ export function sendOptionalSurvey(config, sessionId, survey) {
         recordedAt: new Date().toISOString(),
         sessionId,
         survey
+    });
+}
+export function sendFunnelEvent(config, sessionId, data) {
+    return postPayload(config, {
+        event: data.event,
+        schemaVersion: 1,
+        appVersion: config.version,
+        coreVersion: "0.6.0",
+        recordedAt: new Date().toISOString(),
+        sessionId,
+        ...(data.sceneIndex !== undefined ? { sceneIndex: data.sceneIndex } : {}),
+        ...(data.slotId ? { slotId: data.slotId } : {}),
+        ...(data.elapsedSec !== undefined ? { elapsedSec: data.elapsedSec } : {}),
+        ...(data.deviceClass ? { deviceClass: data.deviceClass } : {})
     });
 }
 //# sourceMappingURL=logging.js.map

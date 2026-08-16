@@ -10,7 +10,7 @@ import { SCENE_GUIDES } from "./core/sceneGuides.js";
 import { getSceneKnownFacts } from "./core/sceneKnowledge.js";
 import { READ_ALOUD_TEXT } from "./core/readAloud.js";
 import { getReadAloudTransition } from "./core/readAloudTransitions.js";
-import { sendCompletedDiagnosis, sendOptionalSurvey } from "./logging.js";
+import { sendCompletedDiagnosis, sendFunnelEvent, sendOptionalSurvey } from "./logging.js";
 import { clearAllLocalData, clearSession, loadSession, loadSurvey, markSessionSent, saveSession, saveSurvey, wasSessionSent } from "./storage.js";
 import { createResultCardBlob, downloadBlob, drawRadarChart } from "./visuals.js";
 const appElement = document.querySelector("#app");
@@ -21,6 +21,38 @@ const debugMode = new URLSearchParams(location.search).get("debug") === "1";
 let session = loadSession();
 let pageMode = "landing";
 let toastCounter = 0;
+let sceneActiveAccumulatedMs = 0;
+let sceneActiveStartedAt = null;
+function beginSceneTiming() {
+    sceneActiveAccumulatedMs = 0;
+    sceneActiveStartedAt = document.visibilityState === "visible" ? Date.now() : null;
+}
+function pauseSceneTiming() {
+    if (sceneActiveStartedAt !== null) {
+        sceneActiveAccumulatedMs += Math.max(0, Date.now() - sceneActiveStartedAt);
+        sceneActiveStartedAt = null;
+    }
+}
+function resumeSceneTiming() {
+    if (pageMode === "session" && session?.phase === "scene" && sceneActiveStartedAt === null) {
+        sceneActiveStartedAt = Date.now();
+    }
+}
+function currentSceneDurationMs() {
+    return sceneActiveAccumulatedMs + (sceneActiveStartedAt === null ? 0 : Math.max(0, Date.now() - sceneActiveStartedAt));
+}
+function sessionElapsedSec() {
+    if (!session?.startedAt)
+        return 0;
+    const started = Date.parse(session.startedAt);
+    return Number.isFinite(started) ? Math.max(0, Math.round((Date.now() - started) / 1000)) : 0;
+}
+function deviceClass() {
+    const ua = navigator.userAgent;
+    if (/Mobi|Android|iPhone|iPad/i.test(ua))
+        return "mobile";
+    return "desktop";
+}
 const UI_LABELS = {
     cards: "行動選択",
     dialogue: "対話",
@@ -79,6 +111,7 @@ function buildSession() {
         state: createInitialState(randomSeed()),
         snapshots: [],
         pendingOutcome: null,
+        startedAt: currentDateTime(),
         completedAt: null,
         updatedAt: currentDateTime()
     };
@@ -449,6 +482,7 @@ function renderResponseInterface(scene, state) {
 function renderScene() {
     if (!session)
         return renderLanding();
+    beginSceneTiming();
     const scene = resolveScene(session.state);
     document.title = `${scene.title}｜${APP_CONFIG.scenarioTitle}`;
     app.innerHTML = `
@@ -685,6 +719,13 @@ function startNew() {
     session = buildSession();
     pageMode = "session";
     persist();
+    void sendFunnelEvent(APP_CONFIG, session.state.sessionSeed, {
+        event: "session_started",
+        sceneIndex: 1,
+        slotId: String(session.state.story.currentSlot),
+        elapsedSec: 0,
+        deviceClass: deviceClass()
+    });
     renderScene();
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -696,6 +737,7 @@ function resumeSession() {
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function goHome() {
+    pauseSceneTiming();
     pageMode = "landing";
     renderLanding();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -975,10 +1017,22 @@ function requestChoice(choiceId, responseMetadata = { kind: "choice" }, response
 function commitChoice(choiceId, followUpOptionId, responseMetadata = { kind: "choice" }, responseSummary) {
     if (!session)
         return;
+    const sceneDurationMs = Math.round(currentSceneDurationMs());
+    pauseSceneTiming();
     const snapshot = cloneState(session.state);
     const result = applyChoice(session.state, choiceId, followUpOptionId, undefined, responseMetadata);
     session.snapshots.push(snapshot);
     session.state = result.state;
+    const historyEntry = session.state.history.at(-1);
+    if (historyEntry)
+        historyEntry.durationMs = sceneDurationMs;
+    void sendFunnelEvent(APP_CONFIG, session.state.sessionSeed, {
+        event: "scene_answered",
+        sceneIndex: session.state.history.length,
+        slotId: result.scene.slotId,
+        elapsedSec: sessionElapsedSec(),
+        deviceClass: deviceClass()
+    });
     const pending = {
         slotId: result.scene.slotId,
         sceneTitle: result.scene.title,
@@ -1008,6 +1062,13 @@ function nextScene() {
         session.phase = "result";
         session.completedAt ??= currentDateTime();
         persist();
+        void sendFunnelEvent(APP_CONFIG, session.state.sessionSeed, {
+            event: "result_viewed",
+            sceneIndex: session.state.history.length,
+            slotId: "S02",
+            elapsedSec: sessionElapsedSec(),
+            deviceClass: deviceClass()
+        });
         renderResult();
     }
     else {
@@ -1150,7 +1211,10 @@ function exportLog() {
 async function maybeSendCompletedDiagnosis(ending, abilities) {
     if (!session || !isRemoteCollectionEnabled() || wasSessionSent(session.state.sessionSeed))
         return;
-    const sent = await sendCompletedDiagnosis(APP_CONFIG, session.state, ending, abilities);
+    const sent = await sendCompletedDiagnosis(APP_CONFIG, session.state, ending, abilities, {
+        startedAt: session.startedAt,
+        completedAt: session.completedAt
+    });
     if (sent)
         markSessionSent(session.state.sessionSeed);
 }
@@ -1285,4 +1349,10 @@ document.addEventListener("keydown", (event) => {
         requestChoice(choice.id);
 });
 render();
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden")
+        pauseSceneTiming();
+    else
+        resumeSceneTiming();
+});
 //# sourceMappingURL=app.js.map
