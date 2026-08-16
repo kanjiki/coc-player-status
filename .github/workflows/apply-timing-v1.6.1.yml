@@ -1,0 +1,37 @@
+name: Apply timing analytics v1.6.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/apply-timing-v1.6.1.py"
+      - ".github/workflows/apply-timing-v1.6.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/apply-timing-v1.6.1.py
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate
+        run: npm run check
+      - name: Commit revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f scripts/apply-timing-v1.6.1.py
+          rm -f .github/workflows/apply-timing-v1.6.1.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add timing and funnel analytics"
+          git push origin HEAD:main
