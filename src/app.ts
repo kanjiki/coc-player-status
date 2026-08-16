@@ -176,6 +176,13 @@ function renderLanding(): void {
             <p class="eyebrow">PLAY-BEHAVIOR DIAGNOSIS</p>
             <h1>${escapeHtml(APP_CONFIG.scenarioTitle)}</h1>
             <p class="hero-lead">性格ではなく、怪異の前で何を選ぶか。短編CoC風シナリオを進め、あなたの選択履歴から6版風ステータスを算出します。</p>
+            <div class="data-notice incident-brief">
+              <strong>事件の始まり</strong>
+              <p>翌朝に解体を控えた旧共同住宅「雨声荘」で、建物調査員の倉持直人が内部調査中に消息を絶ちました。</p>
+              <p>失踪直前、管理会社担当の榊亜希へ倉持から音声ファイルが届きます。倉持本人の声に、同じ声で「右へ行った俺を助けるな。左から来る俺も、俺だと思っている」という言葉が重なり、ファイルの作成時刻は送信時刻より17分後を示していました。</p>
+              <p>あなたは榊から、雨声荘の安全確認、倉持の安否確認、調査資料の回収を依頼された調査協力者です。現地へ向かおうとした直前、その音声が一時サーバーの自動処理でまもなく消えると判明します。</p>
+              <p><strong>Scene 1では、現地へ向かう前に何を最初に確保するかを決めます。</strong></p>
+            </div>
             <blockquote class="hero-quote">「右へ行った俺を助けるな。左から来る俺も、俺だと思っている」</blockquote>
             <div class="hero-actions">
               <button class="primary-button" type="button" data-action="start">新しく診断を始める</button>
@@ -194,7 +201,7 @@ function renderLanding(): void {
           <div class="info-grid">
             <article class="info-card">
               <h2>状況整理付き24 Scene</h2>
-              <p>各場面で、目的・確定情報・代償を先に整理します。四択だけでなく、スライダー、資源配分、順位付けも使います。</p>
+              <p>各場面で、目的・確定情報・代償を先に整理します。行動選択を基本に、連続量を測る場面だけスライダー、同時対応の場面では優先順位を使います。</p>
             </article>
             <article class="info-card">
               <h2>分岐する状況</h2>

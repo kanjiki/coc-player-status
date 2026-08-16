@@ -19,10 +19,11 @@ test("24 Sceneすべてに目的・確定情報・代償・判断指示がある
   }
 });
 
-test("構造化回答は四択以外の4形式を含み、参照先の選択肢が実在する", () => {
+test("構造化回答は必要な場面だけに使い、資源配分形式を使用しない", () => {
   const kinds = new Set(Object.values(RESPONSE_CONFIGS).map((config) => config.kind));
-  assert.deepEqual([...kinds].sort(), ["allocation", "quadrant", "ranking", "slider"]);
-  assert.ok(structuredSlots.length >= 8, "structured response scenes are insufficient");
+  assert.deepEqual([...kinds].sort(), ["quadrant", "ranking", "slider"]);
+  assert.ok(![...kinds].includes("allocation"), "allocation response must not be active");
+  assert.ok(structuredSlots.length >= 6, "structured response scenes are insufficient");
 
   for (const [slotId, config] of Object.entries(RESPONSE_CONFIGS)) {
     const scene = SCENE_BY_SLOT[slotId];

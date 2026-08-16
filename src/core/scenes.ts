@@ -55,7 +55,7 @@ export const SCENES: readonly SceneDefinition[] = [
     act: 1,
     title: "消去される送信データ",
     primaryAxes: ["DEX", "EDU"],
-    ui: "allocation",
+    ui: "cards",
     body: "管理会社の一時サーバーに、失踪した倉持直人から届いた音声が残っている。保管期限は切れており、次の自動処理で上書きされる。画面上の音声だけなら今すぐ複製できるが、送信元・編集履歴・時刻同期を含む正式ログの取得には手続きが必要だ。",
     constraint: "現地へ向かうまでに確保できる作業時間は限られている。",
     choices: [
@@ -91,9 +91,9 @@ export const SCENES: readonly SceneDefinition[] = [
       }),
       choice({
         id: "M03_parallel",
-        label: "複数の調査経路へ資源を分散し、最低限を同時に確保する",
-        detail: "音声、正式ログ、人間側の状況のうち複数を残す代わりに、どれも完全には仕上げない。",
-        outcome: "複数の経路から最低限の情報を確保した。第二音声の位相差は確認できたが、個々の証拠には欠けた部分が残る。",
+        label: "音声を保存しながら、正式ログの保全依頼も同時に出す",
+        detail: "音声を消失前に確保しつつ、管理者へログ保全も依頼する。二つを並行するため、現地への出発は少し遅れる。",
+        outcome: "音声を保存し、正式ログの保全依頼も送った。第二音声の位相差は確認できたが、どちらの確認も現時点では途中までだ。",
         diagnosticWeights: weights({ DEX: 0.5, EDU: 0.5 }),
         effects: [
           inc("story.timeUnits", -1),
@@ -1461,7 +1461,7 @@ export const SCENES: readonly SceneDefinition[] = [
     act: 4,
     title: "雨声荘と他三施設",
     primaryAxes: ["DEX", "SIZ"],
-    ui: "allocation",
+    ui: "order",
     body: "倉持の記録再生と同時に、雨声荘の角が一斉に軋む。榊の端末には、冬城が改修した他三施設から同じ周波数の異常通知が入る。目の前の建物を直ちに処理するか、広域へ対応を拡張するかを決める必要がある。",
     choices: [
       choice({
@@ -1491,9 +1491,9 @@ export const SCENES: readonly SceneDefinition[] = [
       }),
       choice({
         id: "M13_auto_warning",
-        label: "応急封鎖・広域警告・退避へ資源を分散する",
-        detail: "一つへ集中せず、目の前の侵入口、他施設、人員と証拠をそれぞれ最低限守る。",
-        outcome: "現地封鎖、広域警告、退避を並行した。全体の悪化は抑えたが、どの処理も単独では不完全なままだ。",
+        label: "榊と役割を分け、応急封鎖・広域警告・退避を並行する",
+        detail: "自分は現地対応を続けながら、榊へ他施設への警告と退避誘導を頼む。連携に時間がかかり、各処理は単独で行うより不完全になる。",
+        outcome: "榊と役割を分け、現地封鎖、広域警告、退避を並行した。全体の悪化は抑えたが、どの処理も単独では不完全なままだ。",
         diagnosticWeights: weights({ DEX: 0.5, SIZ: 0.5 }),
         effects: [
           inc("story.timeUnits", -2),

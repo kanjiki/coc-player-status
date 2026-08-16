@@ -80,34 +80,6 @@ export type StructuredResponseConfig =
   | RankingResponseConfig;
 
 export const RESPONSE_CONFIGS: Partial<Record<MeasurementSlotId, StructuredResponseConfig>> = {
-  M03: {
-    kind: "allocation",
-    prompt: "現地へ向かう前に使える調査資源は4点です。合計が4点になるよう配分してください。",
-    budget: 4,
-    unitLabel: "点",
-    items: [
-      {
-        id: "immediate",
-        label: "音声の即時保存",
-        hint: "消える前に内容を確保する。正式な証明力は弱い。",
-        dominantChoiceId: "M03_quick_copy"
-      },
-      {
-        id: "formal",
-        label: "正式ログの保全",
-        hint: "時刻・送信経路・編集履歴を残す。時間がかかる。",
-        dominantChoiceId: "M03_formal_log"
-      },
-      {
-        id: "human",
-        label: "倉持の行動確認",
-        hint: "同僚から録音前後の状況を聞く。技術情報は少ない。",
-        dominantChoiceId: "M03_colleague"
-      }
-    ],
-    balancedChoiceId: "M03_parallel",
-    balancedLabel: "複数経路へ分散して最低限を確保する"
-  },
   M11: {
     kind: "ranking",
     prompt: "この場面で最初に行うことから順に並べてください。",
@@ -216,32 +188,10 @@ export const RESPONSE_CONFIGS: Partial<Record<MeasurementSlotId, StructuredRespo
     }
   },
   M13: {
-    kind: "allocation",
-    prompt: "今すぐ使える対応資源は4点です。合計が4点になるよう配分してください。",
-    budget: 4,
-    unitLabel: "点",
-    items: [
-      {
-        id: "local",
-        label: "雨声荘の角を塞ぐ",
-        hint: "目の前の侵入経路を減らす。他施設への対応は遅れる。",
-        dominantChoiceId: "M13_local_now"
-      },
-      {
-        id: "network",
-        label: "他三施設へ警告する",
-        hint: "都市規模の拡散を抑える。雨声荘の処理は遅れる。",
-        dominantChoiceId: "M13_warn_network"
-      },
-      {
-        id: "evacuation",
-        label: "人物と証拠を退避させる",
-        hint: "人員と証拠を守る。即時解決と広域対応は進まない。",
-        dominantChoiceId: "M13_evacuate"
-      }
-    ],
-    balancedChoiceId: "M13_auto_warning",
-    balancedLabel: "応急封鎖・警告・退避へ資源を分散する"
+    kind: "ranking",
+    prompt: "複数の異常が同時に進んでいます。実際の卓で、最初に手をつけるものから順に並べてください。",
+    instructions: "最上位の行動が物語上の主行動になります。二位以下も、次に何を優先するかという判断順として診断に反映します。",
+    choiceIds: ["M13_local_now", "M13_warn_network", "M13_auto_warning", "M13_evacuate"]
   },
   S03: {
     kind: "quadrant",
