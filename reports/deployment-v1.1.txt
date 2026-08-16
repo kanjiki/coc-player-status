@@ -1,0 +1,2 @@
+v1.1 scene guidance and mixed-response interface deployment trigger.
+Commit generated after verified patch application.
