@@ -216,19 +216,68 @@ function renderLanding() {
 }
 function getAtmosphere(state) {
     if (state.mythos.houndStage >= 3)
-        return { label: "角の向こうから見られている", active: 3 };
+        return { label: "細長い影が角からこちら側へ現れている", active: 3 };
     if (state.mythos.houndStage >= 2)
-        return { label: "追跡の気配が離れない", active: 2 };
+        return { label: "角の奥の影が観測者を追って移動している", active: 3 };
     if (state.mythos.houndPressure >= 3)
-        return { label: "青黒い煙が濃くなる", active: 2 };
-    return { label: "角で時計が止まっている", active: 1 };
+        return { label: "新しく露出した角から青黒い煙が漏れている", active: 2 };
+    if (state.history.length >= 8)
+        return { label: "新しい角が増える場所で異常が強まっている", active: 2 };
+    return { label: "音声や記録に17分の時刻ずれが繰り返し現れている", active: 1 };
+}
+function displayLocation(state) {
+    const slot = state.story.currentSlot;
+    const fixed = {
+        M03: "管理会社・出発前",
+        M01: "管理会社・音声解析",
+        M06: "雨声荘・到着前",
+        M02: "雨声荘・封鎖入口",
+        L02: "雨声荘・管理室前",
+        M05: "雨声荘・二階北側",
+        M09: "雨声荘・二階北側の壁内区画",
+        M11: "雨声荘・内部廊下",
+        M04: "雨声荘・地下へ続く廊下",
+        L03: "雨声荘・地下分岐",
+        M07: "雨声荘・地下通路",
+        S01: "雨声荘・観測室前",
+        M08: "雨声荘・観測室前の保管棚",
+        M12: "雨声荘・中央実験区画への通路",
+        L01: "雨声荘・観測室前の変形床",
+        M15: "雨声荘・中央実験区画",
+        M14: "雨声荘・観測室",
+        S04: "雨声荘・観測室",
+        M13: "雨声荘・観測室",
+        M16: "雨声荘・観測室",
+        L04: "雨声荘・観測室",
+        S03: "雨声荘・観測室",
+        S02: "雨声荘・観測室"
+    };
+    if (slot === "M10") {
+        switch (state.story.routes.echo) {
+            case "follow": return "雨声荘・重なった予定外の部屋";
+            case "keep_plan": return "雨声荘・旧洗濯室";
+            case "limited_follow": return "雨声荘・時間残響区画";
+            case "seal": return "雨声荘・地下通路";
+        }
+    }
+    return fixed[slot] ?? LOCATION_LABELS[state.story.location] ?? state.story.location;
+}
+function localCompanionLabel(state) {
+    return state.story.companion === "sumie_present" ? "須藤澄江" : "なし";
+}
+function remoteContactLabel(state) {
+    if (state.story.companion === "sumie_remote")
+        return "須藤澄江";
+    if (state.story.companion === "none")
+        return "なし";
+    return "榊亜希";
 }
 function remainingTimeLabel(state) {
     if (state.story.timeUnits > 0)
         return `猶予 ${state.story.timeUnits}`;
     if (state.story.timeUnits === 0)
-        return "午前3時17分";
-    return `期限超過 ${Math.abs(state.story.timeUnits)}`;
+        return "猶予なし";
+    return `予定より遅延 ${Math.abs(state.story.timeUnits)}`;
 }
 function investigationPanel(state) {
     const atmosphere = getAtmosphere(state);
@@ -236,8 +285,9 @@ function investigationPanel(state) {
     <aside class="investigation-panel" aria-label="調査状況">
       <h2>調査記録</h2>
       <dl class="case-list">
-        <div class="case-row"><dt>現在地</dt><dd>${escapeHtml(LOCATION_LABELS[state.story.location] ?? state.story.location)}</dd></div>
-        <div class="case-row"><dt>同行</dt><dd>${escapeHtml(COMPANION_LABELS[state.story.companion])}</dd></div>
+        <div class="case-row"><dt>現在地</dt><dd>${escapeHtml(displayLocation(state))}</dd></div>
+        <div class="case-row"><dt>現地同行</dt><dd>${escapeHtml(localCompanionLabel(state))}</dd></div>
+        <div class="case-row"><dt>通信</dt><dd>${escapeHtml(remoteContactLabel(state))}</dd></div>
         <div class="case-row"><dt>手掛かり</dt><dd>${state.story.clues.length}件</dd></div>
         <div class="case-row"><dt>時刻</dt><dd>${escapeHtml(remainingTimeLabel(state))}</dd></div>
       </dl>
