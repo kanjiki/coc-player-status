@@ -1,0 +1,2 @@
+v1.3 KP read-aloud text deployment trigger.
+All 24 scenes use the new read-aloud layer.
