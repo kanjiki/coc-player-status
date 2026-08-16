@@ -1,0 +1,40 @@
+name: Apply v1.1 scene revision
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "updates/coc-v1.1.patch.gz"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-v1-1-scene-revision
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply verified revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -dc updates/coc-v1.1.patch.gz > /tmp/coc-v1.1.patch
+          git apply --check /tmp/coc-v1.1.patch
+          git apply /tmp/coc-v1.1.patch
+          rm -f updates/coc-v1.1.patch.gz
+          rmdir updates 2>/dev/null || true
+          rm -f .github/workflows/apply-v1.1.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Revise scene questions and response interfaces"
+          git push origin HEAD:main
