@@ -67,20 +67,25 @@ jobs:
           '''
           text = text[:start] + replacement + text[end:]
 
-          old_scene = '''            <h1>${escapeHtml(scene.title)}</h1>
-            <p class="scene-body">${escapeHtml(scene.body)}</p>
-            ${sceneGuideMarkup(scene)}
-            ${scene.constraint ? `<p class="scene-constraint"><strong>制約：</strong>${escapeHtml(scene.constraint)}</p>` : ""}
-            <p class="answer-principle">最善手を当てる問題ではありません。実際の卓で、あなたが最初に提案したくなる判断を選んでください。</p>
-            ${renderResponseInterface(scene, session.state)}'''
-          new_scene = '''            <h1>${escapeHtml(scene.title)}</h1>
-            ${readAloudMarkup(scene)}
-            ${sceneGuideMarkup(scene)}
-            <h2 class="decision-heading">どうする？</h2>
-            ${renderResponseInterface(scene, session.state)}'''
-          if old_scene not in text:
-              raise SystemExit('renderScene block not found')
-          text = text.replace(old_scene, new_scene, 1)
+          old_body = '            <p class="scene-body">${escapeHtml(scene.body)}</p>'
+          if old_body not in text:
+              raise SystemExit('scene body line not found')
+          text = text.replace(old_body, '            ${readAloudMarkup(scene)}', 1)
+
+          lines = []
+          inserted_decision = False
+          for line in text.splitlines():
+              if '${scene.constraint ? `<p class="scene-constraint"' in line:
+                  continue
+              if '<p class="answer-principle">' in line:
+                  continue
+              lines.append(line)
+              if '${sceneGuideMarkup(scene)}' in line and not inserted_decision:
+                  lines.append('            <h2 class="decision-heading">どうする？</h2>')
+                  inserted_decision = True
+          if not inserted_decision:
+              raise SystemExit('decision heading insertion point not found')
+          text = '\n'.join(lines) + '\n'
           path.write_text(text, encoding='utf-8')
 
           for file_name in ['package.json', 'public/site-config.js']:
