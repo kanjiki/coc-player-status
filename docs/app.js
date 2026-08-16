@@ -8,6 +8,7 @@ import { createInitialState } from "./core/initialState.js";
 import { RESPONSE_CONFIGS } from "./core/responseConfigs.js";
 import { SCENE_GUIDES } from "./core/sceneGuides.js";
 import { READ_ALOUD_TEXT } from "./core/readAloud.js";
+import { getReadAloudTransition } from "./core/readAloudTransitions.js";
 import { sendCompletedDiagnosis, sendOptionalSurvey } from "./logging.js";
 import { clearAllLocalData, clearSession, loadSession, loadSurvey, markSessionSent, saveSession, saveSurvey, wasSessionSent } from "./storage.js";
 import { createResultCardBlob, downloadBlob, drawRadarChart } from "./visuals.js";
@@ -245,8 +246,10 @@ function choiceCardMarkup(choice, index) {
       ${choice.usesDice ? `<span class="dice-badge">1D100</span>` : ""}
     </button>`;
 }
-function readAloudMarkup(scene) {
-    const text = READ_ALOUD_TEXT[scene.slotId] ?? scene.body;
+function readAloudMarkup(scene, state) {
+    const bridge = getReadAloudTransition(state);
+    const base = READ_ALOUD_TEXT[scene.slotId] ?? scene.body;
+    const text = [bridge, base].filter(Boolean).join("\n\n");
     const paragraphs = text.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
     return `<div class="read-aloud-copy">${paragraphs.map((paragraph) => `<p class="scene-body">${escapeHtml(paragraph)}</p>`).join("")}</div>`;
 }
@@ -459,7 +462,7 @@ function renderScene() {
               <span class="state-badge">ACT ${scene.act}</span>
             </div>
             <h1>${escapeHtml(scene.title)}</h1>
-            ${readAloudMarkup(scene)}
+            ${readAloudMarkup(scene, session.state)}
             ${sceneGuideMarkup(scene)}
             <h2 class="decision-heading">どうする？</h2>
             ${renderResponseInterface(scene, session.state)}
