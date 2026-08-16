@@ -961,7 +961,7 @@ export const SCENES: readonly SceneDefinition[] = [
       choice({
         id: "S01_remote",
         label: "遠隔カメラと防護窓を使い、内容を限定して観測する",
-        outcome: "時間角の存在は確認したが、体験を自分の記憶として受け取ることは避けた。",
+        outcome: "複数の像が単なる同一映像の重なりではないことは確認したが、その体験を自分の記憶として受け取ることは避けた。",
         diagnosticWeights: weights({ POW: 0.75, SAN_DEPTH: -0.75 }),
         effects: [
           inc("mythos.angularExposure", 0.5),
@@ -973,7 +973,7 @@ export const SCENES: readonly SceneDefinition[] = [
       }),
       choice({
         id: "S01_direct",
-        label: "時間角へ直接接続し、倉持の別未来をすべて体験する",
+        label: "観測器へ直接接続し、倉持の別の記録をすべて体験する",
         outcome: "複数の死と脱出を自分の記憶として体験した。角の奥で何かが振り向き、こちらの時間的な匂いを得る。",
         diagnosticWeights: weights({ POW: 1, SAN_DEPTH: 1 }),
         effects: [
@@ -1000,7 +1000,7 @@ export const SCENES: readonly SceneDefinition[] = [
       choice({
         id: "S01_destroy_record",
         label: "観測記録を破壊し、倉持の別未来が失われることを受け入れる",
-        outcome: "映像は消えた。真相へは近づかなかったが、いくつかの時間状態を観測不能へ戻した。破損した縁には新しい角が残る。",
+        outcome: "映像は消えた。真相へは近づかなかったが、いくつかの像は観測不能になった。破損した縁には新しい角が残る。",
         diagnosticWeights: weights({ POW: -0.75, SAN_DEPTH: 0.75 }),
         effects: [
           inc("observer.lensIntegrity", -10),
@@ -1108,7 +1108,7 @@ export const SCENES: readonly SceneDefinition[] = [
       choice({
         id: "M12_enter",
         label: "消える前に扉へ入り、別配置の廊下を進む",
-        outcome: "起こらなかった雨声荘へ一時的に踏み込んだ。近道を得たが、時間角への曝露が深くなる。",
+        outcome: "現在とは配置の異なる雨声荘へ一時的に踏み込んだ。近道を得たが、異常な現象への接触は深くなる。",
         diagnosticWeights: weights({ CON: -0.75, DEX: 1 }),
         effects: [
           set("story.routes.transientDoor", "enter"),
@@ -1544,8 +1544,8 @@ export const SCENES: readonly SceneDefinition[] = [
     choices: [
       choice({
         id: "M16_rescue",
-        label: "時間角へ入り、倉持の時間状態へ接触する",
-        outcome: "倉持の救出を優先して時間角へ踏み込んだ。三状態との接触は容易になったが、猟犬にも個人として感知される。",
+        label: "三人の倉持が重なる中心へ入り、直接接触する",
+        outcome: "倉持の救出を優先して三つの像が重なる中心へ踏み込んだ。三人との接触は容易になったが、角の向こうの存在にも個人として感知される。",
         diagnosticWeights: weights({ POW: 1, SIZ: -0.75 }),
         effects: [
           set("story.routes.finalScope", "rescue"),
@@ -1621,11 +1621,11 @@ export const SCENES: readonly SceneDefinition[] = [
     title: "最初に回収する倉持の情報",
     primaryAxes: ["LUCK", "STR"],
     ui: "dice",
-    body: "観測室には三つの時間角が開き、それぞれ倉持A・B・Cの情報へつながっている。ここで帰還者は決めない。限られた時間の中で、どの情報を最初に回収するかを決める。",
+    body: "観測室の制御盤にはA・B・Cの三つの信号窓が開いている。ここで帰還者は決めない。限られた時間の中で、どの情報を最初に回収するかを決める。",
     choices: [
       choice({
         id: "L04_random",
-        label: "ダイスで一つの時間角を選び、最初の情報源にする",
+        label: "ダイスで一つの信号窓を選び、最初の情報源にする",
         outcome: "どの倉持へ最初に接触するかを偶然へ委ねた。出目が選んだ時間状態の情報カードが開く。",
         diagnosticWeights: weights({ LUCK: 1, STR: -0.75 }),
         effects: [selectInfo("random")],
@@ -1635,8 +1635,8 @@ export const SCENES: readonly SceneDefinition[] = [
       }),
       choice({
         id: "L04_strongest",
-        label: "最も強く反応する時間角を、自分の判断でこじ開ける",
-        outcome: "最も強い信号へ直接介入し、倉持Aの観測記録を最初に回収した。角の安定性は低下する。",
+        label: "最も強く反応する信号窓を、自分の判断で開く",
+        outcome: "最も強い信号へ直接介入し、倉持Aの観測記録を最初に回収した。装置の安定性は低下する。",
         diagnosticWeights: weights({ LUCK: -0.75, STR: 1 }),
         effects: [
           selectInfo("strongest"),
@@ -1647,7 +1647,7 @@ export const SCENES: readonly SceneDefinition[] = [
       }),
       choice({
         id: "L04_probe",
-        label: "一度だけ反応試験を行い、その結果を基に時間角を開く",
+        label: "一度だけ反応試験を行い、その結果を基に信号窓を開く",
         outcome: "偶然を情報として利用し、最も連続性の高そうな倉持へ接触を試みた。",
         diagnosticWeights: weights({ LUCK: 0.5, STR: 0.5 }),
         effects: [inc("story.timeUnits", -1)],

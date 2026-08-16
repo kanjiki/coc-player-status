@@ -28,6 +28,7 @@ import {
   type StructuredResponseConfig
 } from "./core/responseConfigs.js";
 import { SCENE_GUIDES } from "./core/sceneGuides.js";
+import { getSceneKnownFacts } from "./core/sceneKnowledge.js";
 import { READ_ALOUD_TEXT } from "./core/readAloud.js";
 import { getReadAloudTransition } from "./core/readAloudTransitions.js";
 import { SCENE_BY_SLOT } from "./core/scenes.js";
@@ -303,14 +304,15 @@ function readAloudMarkup(scene: ResolvedScene, state: AppState): string {
   return `<div class="read-aloud-copy">${paragraphs.map((paragraph) => `<p class="scene-body">${escapeHtml(paragraph)}</p>`).join("")}</div>`;
 }
 
-function sceneGuideMarkup(scene: ResolvedScene): string {
+function sceneGuideMarkup(scene: ResolvedScene, state: AppState): string {
   const guide = SCENE_GUIDES[scene.slotId];
+  const knownFacts = getSceneKnownFacts(state, scene.slotId);
   return `
     <section class="scene-guide" aria-label="確認できること">
       <div class="scene-guide-grid">
         <div>
           <h2>確認できること</h2>
-          <ul>${guide.knownFacts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join("")}</ul>
+          <ul>${knownFacts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join("")}</ul>
         </div>
       </div>
       ${guide.glossary?.length ? `
@@ -528,7 +530,7 @@ function renderScene(): void {
             </div>
             <h1>${escapeHtml(scene.title)}</h1>
             ${readAloudMarkup(scene, session.state)}
-            ${sceneGuideMarkup(scene)}
+            ${sceneGuideMarkup(scene, session.state)}
             <h2 class="decision-heading">どうする？</h2>
             ${renderResponseInterface(scene, session.state)}
           </article>
