@@ -25,6 +25,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ ! -f .upgrade/v1.1.part00 ]]; then
+            echo "v1.1 revision has already been expanded."
+            exit 0
+          fi
           cat \
             .upgrade/v1.1.part00 \
             .upgrade/v1.1.part01 \
@@ -36,61 +40,6 @@ jobs:
           git apply --check /tmp/coc-v1.1.patch
           git apply /tmp/coc-v1.1.patch
           rm -rf .upgrade updates
-          cat > .github/workflows/deploy-pages.yml <<'EOF_DEPLOY'
-          name: Deploy GitHub Pages
-
-          on:
-            push:
-              branches: [main]
-            workflow_dispatch:
-
-          permissions:
-            contents: read
-            pages: write
-            id-token: write
-
-          concurrency:
-            group: pages
-            cancel-in-progress: true
-
-          jobs:
-            build:
-              runs-on: ubuntu-latest
-              steps:
-                - name: Checkout
-                  uses: actions/checkout@v4
-
-                - name: Set up Node.js
-                  uses: actions/setup-node@v4
-                  with:
-                    node-version: 22
-
-                - name: Install dependencies
-                  run: npm install --no-audit --no-fund
-
-                - name: Build and validate
-                  run: npm run check
-
-                - name: Configure Pages
-                  uses: actions/configure-pages@v5
-
-                - name: Upload Pages artifact
-                  uses: actions/upload-pages-artifact@v3
-                  with:
-                    path: docs
-
-            deploy:
-              environment:
-                name: github-pages
-                url: ${{ steps.deployment.outputs.page_url }}
-              runs-on: ubuntu-latest
-              needs: build
-              steps:
-                - name: Deploy to GitHub Pages
-                  id: deployment
-                  uses: actions/deploy-pages@v4
-          EOF_DEPLOY
-          rm -f .github/workflows/apply-v1.1.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
