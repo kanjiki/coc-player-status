@@ -25,7 +25,20 @@ jobs:
           fetch-depth: 0
 
       - name: Apply information-order revision
-        run: python scripts/apply-v1.6.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/apply-v1.6.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/core/sceneGuides.ts')
+          s = p.read_text(encoding='utf-8')
+          old = 'objective: "地下の旧実験区画へ進む経路を選ぶ。"'
+          new = 'objective: "地下の旧実験区画へ向かうため、危険度と所要時間の異なる経路から進み方を選ぶ。"'
+          if old not in s:
+              raise SystemExit('L03 objective marker not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
