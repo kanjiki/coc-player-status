@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#29333a"/>
+      <stop offset="1" stop-color="#0d1114"/>
+    </radialGradient>
+    <pattern id="p" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M0 80L80 0M40 80L80 40" stroke="#d8c9aa" stroke-opacity=".07" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect width="1200" height="630" fill="url(#p)"/>
+  <circle cx="900" cy="315" r="170" fill="none" stroke="#d8c9aa" stroke-width="8" stroke-opacity=".7"/>
+  <path d="M900 145v170h170" fill="none" stroke="#b65f55" stroke-width="10" stroke-linecap="round"/>
+  <text x="90" y="205" font-size="40" fill="#d8c9aa" font-family="sans-serif" letter-spacing="5">CoC探索者ステータス診断</text>
+  <text x="90" y="315" font-size="72" fill="#f2eee5" font-family="serif" font-weight="700">その角を曲がる前に</text>
+  <text x="94" y="390" font-size="28" fill="#aeb7bb" font-family="sans-serif">性格ではなく、怪異の前で何を選ぶか。</text>
+</svg>

@@ -1,0 +1,17 @@
+{
+  "name": "coc-status-github-pages",
+  "version": "1.0.0-beta.1",
+  "private": true,
+  "type": "module",
+  "description": "CoC探索者ステータス診断『その角を曲がる前に』GitHub Pages版",
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "npm run build && node scripts/validate-build.mjs && node --test tests/*.test.mjs",
+    "serve": "node scripts/serve.mjs",
+    "preview": "npm run build && npm run serve"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
