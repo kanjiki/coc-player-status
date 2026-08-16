@@ -3,8 +3,6 @@ name: Apply v1.1 scene revision
 on:
   push:
     branches: [main]
-    paths:
-      - "updates/coc-v1.1.patch.gz"
   workflow_dispatch:
 
 permissions:
@@ -27,7 +25,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gzip -dc updates/coc-v1.1.patch.gz > /tmp/coc-v1.1.patch
+          base64 --decode updates/coc-v1.1.patch.gz > /tmp/coc-v1.1.patch.gz
+          gzip -dc /tmp/coc-v1.1.patch.gz > /tmp/coc-v1.1.patch
           git apply --check /tmp/coc-v1.1.patch
           git apply /tmp/coc-v1.1.patch
           rm -f updates/coc-v1.1.patch.gz
