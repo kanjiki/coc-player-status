@@ -149,6 +149,15 @@ export interface DiagnosticAxisState {
 
 export type DiagnosticState = Record<DiagnosticAxis, DiagnosticAxisState>;
 
+export type ResponseEvidence = { axisEvidence?: DiagnosticWeights };
+
+export type ResponseMetadata =
+  | { kind: "choice" }
+  | ({ kind: "slider"; value: number; selectedBand: string } & ResponseEvidence)
+  | ({ kind: "quadrant"; x: number; y: number; quadrant: "lowLow" | "highLow" | "lowHigh" | "highHigh" } & ResponseEvidence)
+  | ({ kind: "allocation"; budget: number; allocations: Record<string, number> } & ResponseEvidence)
+  | ({ kind: "ranking"; order: string[] } & ResponseEvidence);
+
 export interface HistoryEntry {
   slotId: AnySlotId;
   sceneVariantId: string;
@@ -156,6 +165,7 @@ export interface HistoryEntry {
   selectedChoiceId: string;
   diceRoll?: number;
   snapshotHash: string;
+  response?: ResponseMetadata;
 }
 
 export interface AppState {

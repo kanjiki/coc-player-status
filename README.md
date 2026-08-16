@@ -83,7 +83,7 @@ public/site-config.js
 window.APP_CONFIG = {
   appName: "CoC探索者ステータス診断",
   scenarioTitle: "その角を曲がる前に",
-  version: "1.0.0-beta.1",
+  version: "1.1.0-beta.1",
   dataEndpoint: "",
   collectDiagnostics: false,
   shareUrl: "",
@@ -131,6 +131,19 @@ Docs/                ビルド済みGitHub Pagesサイト
 ```
 
 実際のフォルダ名は小文字です：`tests/`、`docs/`。
+
+
+### v1.1の回答形式
+
+全Sceneで、物語本文だけでなく「目的・確定情報・選択の代償」を表示します。回答形式はSceneに合わせて使い分けます。
+
+- 通常の行動カード
+- 安全と速度を連続値で示すスライダー
+- 二つの価値を別々に測る二軸スライダー
+- 限られた点数を配る資源配分
+- 最初に行う行動を並べる優先順位
+
+スライダー・配分・順位の生データはプレイログへ保存されます。順位操作はドラッグ必須にせず、スマートフォンでも使える上下ボタン式です。
 
 ## 診断ロジック
 
@@ -223,5 +236,5 @@ docs/dev/kuramochi-cards.json
 
 ## バージョン
 
-- Core: `0.5.0`
-- UI: `1.0.0-beta.1`
+- Core: `0.6.0`
+- UI: `1.1.0-beta.1`

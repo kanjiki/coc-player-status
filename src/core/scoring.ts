@@ -2,7 +2,8 @@ import type {
   AppState,
   ChoiceDefinition,
   DiagnosticAxis,
-  ResolvedScene
+  ResolvedScene,
+  ResponseMetadata
 } from "./types.js";
 import { DIAGNOSTIC_AXES } from "./constants.js";
 
@@ -59,6 +60,43 @@ export function computeChoiceObservations(
       valid: true,
       primary
     });
+  }
+
+  return observations;
+}
+
+
+export function computeResponseObservations(
+  scene: ResolvedScene,
+  visibleChoices: readonly ChoiceDefinition[],
+  selectedChoice: ChoiceDefinition,
+  responseMetadata?: ResponseMetadata
+): AxisObservation[] {
+  const observations = computeChoiceObservations(scene, visibleChoices, selectedChoice);
+  const overrides = responseMetadata && responseMetadata.kind !== "choice"
+    ? responseMetadata.axisEvidence
+    : undefined;
+  if (!overrides) return observations;
+
+  for (const [axis, rawEvidence] of Object.entries(overrides) as [DiagnosticAxis, number][]) {
+    if (!Number.isFinite(rawEvidence)) continue;
+    const evidence = Math.max(-1, Math.min(1, rawEvidence));
+    const primary = scene.primaryAxes.includes(axis);
+    const existing = observations.find((observation) => observation.axis === axis);
+    if (existing) {
+      existing.evidence = evidence;
+      existing.informationWeight = primary ? 1 : 0.5;
+      existing.valid = true;
+      existing.primary = primary;
+    } else {
+      observations.push({
+        axis,
+        evidence,
+        informationWeight: primary ? 1 : 0.5,
+        valid: true,
+        primary
+      });
+    }
   }
 
   return observations;

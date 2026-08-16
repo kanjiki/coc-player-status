@@ -91,9 +91,9 @@ export const SCENES: readonly SceneDefinition[] = [
       }),
       choice({
         id: "M03_parallel",
-        label: "画面録画をしながら、同時に正式保全を申請する",
-        detail: "両方を確保する代わりに、作業が分散して出発が遅れる。",
-        outcome: "音声と最低限のログを両方確保した。第二音声の位相差も確認できるが、正式ログの一部は欠けている。",
+        label: "複数の調査経路へ資源を分散し、最低限を同時に確保する",
+        detail: "音声、正式ログ、人間側の状況のうち複数を残す代わりに、どれも完全には仕上げない。",
+        outcome: "複数の経路から最低限の情報を確保した。第二音声の位相差は確認できたが、個々の証拠には欠けた部分が残る。",
         diagnosticWeights: weights({ DEX: 0.5, EDU: 0.5 }),
         effects: [
           inc("story.timeUnits", -1),
@@ -1491,8 +1491,9 @@ export const SCENES: readonly SceneDefinition[] = [
       }),
       choice({
         id: "M13_auto_warning",
-        label: "最低限の応急封鎖を行い、自動警告を三施設へ送る",
-        outcome: "雨声荘と広域の両方へ対応したが、どちらの処理も完全ではない。",
+        label: "応急封鎖・広域警告・退避へ資源を分散する",
+        detail: "一つへ集中せず、目の前の侵入口、他施設、人員と証拠をそれぞれ最低限守る。",
+        outcome: "現地封鎖、広域警告、退避を並行した。全体の悪化は抑えたが、どの処理も単独では不完全なままだ。",
         diagnosticWeights: weights({ DEX: 0.5, SIZ: 0.5 }),
         effects: [
           inc("story.timeUnits", -2),

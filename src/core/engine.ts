@@ -7,7 +7,7 @@ import {
   STOP_CLUES
 } from "./constants.js";
 import { SCENE_BY_SLOT, SCENES } from "./scenes.js";
-import { applyDiagnosticObservations, computeChoiceObservations } from "./scoring.js";
+import { applyDiagnosticObservations, computeResponseObservations } from "./scoring.js";
 import type {
   AppState,
   ChoiceDefinition,
@@ -16,6 +16,7 @@ import type {
   KuramochiVariantId,
   MeasurementSlotId,
   ResolvedScene,
+  ResponseMetadata,
   SceneDefinition,
   StateEffect
 } from "./types.js";
@@ -474,7 +475,8 @@ export function applyChoice(
   inputState: AppState,
   choiceId: string,
   followUpOptionId?: string,
-  diceRollOverride?: number
+  diceRollOverride?: number,
+  responseMetadata?: ResponseMetadata
 ): ApplyChoiceResult {
   const state = cloneState(inputState);
   const scene = resolveScene(state);
@@ -483,7 +485,7 @@ export function applyChoice(
     throw new Error(`Choice ${choiceId} is not visible in ${scene.slotId}/${scene.sceneVariantId}`);
   }
 
-  const observations = computeChoiceObservations(scene, scene.choices, choice);
+  const observations = computeResponseObservations(scene, scene.choices, choice, responseMetadata);
   applyDiagnosticObservations(state, observations);
 
   let diceRoll: number | undefined;
@@ -531,7 +533,8 @@ export function applyChoice(
     visibleChoiceIds: scene.choices.map((candidate) => candidate.id),
     selectedChoiceId: choice.id,
     ...(diceRoll !== undefined ? { diceRoll } : {}),
-    snapshotHash: stableHash(state)
+    snapshotHash: stableHash(state),
+    ...(responseMetadata !== undefined ? { response: responseMetadata } : {})
   });
 
   return {

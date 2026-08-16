@@ -21,3 +21,23 @@ test("HTMLは相対パスでGitHub Pagesサブパスに対応する", () => {
   assert.match(html, /href="\.\/styles\.css"/);
   assert.doesNotMatch(html, /(?:src|href)="\//);
 });
+
+test("説明パネルと四択以外の回答UIがビルドへ含まれる", () => {
+  const appJs = readFileSync("docs/app.js", "utf8");
+  const styles = readFileSync("docs/styles.css", "utf8");
+  for (const token of [
+    "scene-guide",
+    "submit-slider",
+    "submit-quadrant",
+    "submit-allocation",
+    "submit-ranking",
+    "axisEvidence"
+  ]) assert.match(appJs, new RegExp(token), token);
+  for (const selector of [
+    ".scene-guide",
+    ".decision-slider",
+    ".allocation-grid",
+    ".ranking-list",
+    ".quadrant-dot"
+  ]) assert.match(styles, new RegExp(selector.replace(".", "\\.")), selector);
+});

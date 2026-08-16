@@ -15,6 +15,7 @@ export interface PendingOutcome {
   followUpLabel?: string;
   diceRoll?: number;
   diceSuccess?: boolean;
+  responseSummary?: string;
 }
 
 export interface OptionalSurvey {

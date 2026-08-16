@@ -7,7 +7,7 @@ export interface DiagnosticPayload {
   event: "diagnosis_completed" | "optional_survey";
   schemaVersion: 1;
   appVersion: string;
-  coreVersion: "0.5.0";
+  coreVersion: "0.6.0";
   recordedAt: string;
   sessionId: string;
   history?: AppState["history"];
@@ -55,7 +55,7 @@ export function sendCompletedDiagnosis(
     event: "diagnosis_completed",
     schemaVersion: 1,
     appVersion: config.version,
-    coreVersion: "0.5.0",
+    coreVersion: "0.6.0",
     recordedAt: new Date().toISOString(),
     sessionId: state.sessionSeed,
     history: state.history,
@@ -85,7 +85,7 @@ export function sendOptionalSurvey(
     event: "optional_survey",
     schemaVersion: 1,
     appVersion: config.version,
-    coreVersion: "0.5.0",
+    coreVersion: "0.6.0",
     recordedAt: new Date().toISOString(),
     sessionId,
     survey

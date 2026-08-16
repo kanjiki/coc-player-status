@@ -19,8 +19,17 @@ import {
   stopClueCount
 } from "./core/engine.js";
 import { createInitialState } from "./core/initialState.js";
+import {
+  RESPONSE_CONFIGS,
+  type AllocationResponseConfig,
+  type QuadrantResponseConfig,
+  type RankingResponseConfig,
+  type SliderResponseConfig,
+  type StructuredResponseConfig
+} from "./core/responseConfigs.js";
+import { SCENE_GUIDES } from "./core/sceneGuides.js";
 import { SCENE_BY_SLOT } from "./core/scenes.js";
-import type { AppState, ChoiceDefinition, EndingDefinition, ResolvedScene } from "./core/types.js";
+import type { AppState, ChoiceDefinition, DiagnosticWeights, EndingDefinition, ResolvedScene, ResponseMetadata } from "./core/types.js";
 import { sendCompletedDiagnosis, sendOptionalSurvey } from "./logging.js";
 import {
   clearAllLocalData,
@@ -144,7 +153,7 @@ function pageFooter(): string {
   return `
     <footer class="site-footer">
       <div class="footer-inner">
-        <p>非公式ファンメイド診断｜Core v0.5.0｜UI v${escapeHtml(APP_CONFIG.version)}</p>
+        <p>非公式ファンメイド診断｜Core v0.6.0｜UI v${escapeHtml(APP_CONFIG.version)}</p>
         <p class="rights-notice">${escapeHtml(APP_CONFIG.rightsNotice)}</p>
       </div>
     </footer>`;
@@ -184,8 +193,8 @@ function renderLanding(): void {
         <section class="landing-section" aria-label="診断について">
           <div class="info-grid">
             <article class="info-card">
-              <h2>24のScene</h2>
-              <p>質問文ではなく、調査・対話・判定・撤退を含む一続きの怪異事件として進行します。</p>
+              <h2>状況整理付き24 Scene</h2>
+              <p>各場面で、目的・確定情報・代償を先に整理します。四択だけでなく、スライダー、資源配分、順位付けも使います。</p>
             </article>
             <article class="info-card">
               <h2>分岐する状況</h2>
@@ -264,6 +273,235 @@ function choiceLetter(index: number): string {
   return String.fromCharCode(65 + index);
 }
 
+function choiceCardMarkup(choice: ChoiceDefinition, index: number): string {
+  return `
+    <button class="choice-card" type="button" data-choice-id="${escapeHtml(choice.id)}">
+      <span class="choice-key">${choiceLetter(index)}</span>
+      <span class="choice-copy">
+        <strong>${escapeHtml(choice.label)}</strong>
+        ${choice.detail ? `<small>${escapeHtml(choice.detail)}</small>` : ""}
+      </span>
+      <span class="choice-arrow" aria-hidden="true">›</span>
+      ${choice.usesDice ? `<span class="dice-badge">1D100</span>` : ""}
+    </button>`;
+}
+
+function sceneGuideMarkup(scene: ResolvedScene): string {
+  const guide = SCENE_GUIDES[scene.slotId];
+  return `
+    <section class="scene-guide" aria-label="状況整理">
+      <div class="scene-guide-heading">
+        <span class="guide-label">今回の目的</span>
+        <strong>${escapeHtml(guide.objective)}</strong>
+      </div>
+      <div class="scene-guide-grid">
+        <div>
+          <h2>確認できていること</h2>
+          <ul>${guide.knownFacts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join("")}</ul>
+        </div>
+        <div>
+          <h2>この判断で変わること</h2>
+          <p>${escapeHtml(guide.stakes)}</p>
+        </div>
+      </div>
+      <p class="decision-prompt"><strong>判断：</strong>${escapeHtml(guide.decisionPrompt)}</p>
+      ${guide.glossary?.length ? `
+        <details class="scene-glossary">
+          <summary>用語の補足</summary>
+          ${guide.glossary.map((item) => `<p><strong>${escapeHtml(item.term)}</strong>：${escapeHtml(item.definition)}</p>`).join("")}
+        </details>` : ""}
+    </section>`;
+}
+
+function hashNumber(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function deterministicOrder<T extends { id: string }>(items: readonly T[], seed: string): T[] {
+  return [...items].sort((left, right) => hashNumber(`${seed}:${left.id}`) - hashNumber(`${seed}:${right.id}`));
+}
+
+function sliderBand(config: SliderResponseConfig, value: number) {
+  return config.bands.find((band) => value <= band.max) ?? config.bands.at(-1)!;
+}
+
+function renderSliderResponse(scene: ResolvedScene, config: SliderResponseConfig): string {
+  const initialBand = sliderBand(config, config.defaultValue);
+  return `
+    <section class="response-workbench slider-workbench" data-response-kind="slider">
+      <div class="response-heading">
+        <h2>連続した判断で回答</h2>
+        <p>${escapeHtml(config.prompt)}</p>
+      </div>
+      <div class="slider-endpoints">
+        <div><strong>${escapeHtml(config.minLabel)}</strong><small>${escapeHtml(config.minHint)}</small></div>
+        <div><strong>${escapeHtml(config.maxLabel)}</strong><small>${escapeHtml(config.maxHint)}</small></div>
+      </div>
+      <input class="decision-slider" type="range" min="0" max="100" step="1" value="${config.defaultValue}" data-slider-control data-touched="false" aria-label="${escapeHtml(config.prompt)}">
+      <div class="slider-scale" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+      <div class="response-preview" data-response-preview>
+        <span class="response-value" data-response-value>${config.defaultValue}</span>
+        <div><strong>${escapeHtml(initialBand.label)}</strong><p>${escapeHtml(initialBand.explanation)}</p></div>
+      </div>
+      <p class="response-note">中央は初期位置です。スライダーを一度動かすと決定できます。</p>
+      <button class="primary-button structured-submit" type="button" data-action="submit-slider" disabled>この位置で決定する</button>
+    </section>`;
+}
+
+function quadrantKey(x: number, y: number): "lowLow" | "highLow" | "lowHigh" | "highHigh" {
+  const xHigh = x >= 50;
+  const yHigh = y >= 50;
+  if (xHigh && yHigh) return "highHigh";
+  if (xHigh) return "highLow";
+  if (yHigh) return "lowHigh";
+  return "lowLow";
+}
+
+function normalizeResponseValue(value: number): number {
+  return Math.max(-1, Math.min(1, (value - 50) / 50));
+}
+
+function mergeWeightedEvidence(
+  target: DiagnosticWeights,
+  weights: DiagnosticWeights,
+  multiplier: number
+): void {
+  for (const [axis, weight] of Object.entries(weights)) {
+    const typedAxis = axis as keyof DiagnosticWeights;
+    target[typedAxis] = (target[typedAxis] ?? 0) + weight * multiplier;
+  }
+}
+
+function allocationAxisEvidence(
+  scene: ResolvedScene,
+  config: AllocationResponseConfig,
+  values: Record<string, number>
+): DiagnosticWeights {
+  const evidence: DiagnosticWeights = {};
+  for (const item of config.items) {
+    const count = values[item.id] ?? 0;
+    if (count <= 0) continue;
+    const sourceChoice = scene.choices.find((choice) => choice.id === item.dominantChoiceId);
+    if (!sourceChoice) continue;
+    mergeWeightedEvidence(evidence, sourceChoice.diagnosticWeights, count / config.budget);
+  }
+  return evidence;
+}
+
+function rankingAxisEvidence(scene: ResolvedScene, order: readonly string[]): DiagnosticWeights {
+  const rankWeights = [1, 0.6, 0.3, 0] as const;
+  const denominator = rankWeights.slice(0, order.length).reduce<number>((sum, value) => sum + value, 0) || 1;
+  const evidence: DiagnosticWeights = {};
+  order.forEach((choiceId, index) => {
+    const sourceChoice = scene.choices.find((choice) => choice.id === choiceId);
+    if (!sourceChoice) return;
+    mergeWeightedEvidence(evidence, sourceChoice.diagnosticWeights, (rankWeights[index] ?? 0) / denominator);
+  });
+  return evidence;
+}
+
+function renderQuadrantResponse(scene: ResolvedScene, config: QuadrantResponseConfig): string {
+  const initialKey = quadrantKey(50, 50);
+  const extraChoices = (config.extraChoiceIds ?? [])
+    .map((choiceId) => scene.choices.find((choice) => choice.id === choiceId))
+    .filter((choice): choice is ChoiceDefinition => Boolean(choice));
+  return `
+    <section class="response-workbench quadrant-workbench" data-response-kind="quadrant">
+      <div class="response-heading"><h2>二つの軸を別々に回答</h2><p>${escapeHtml(config.prompt)}</p></div>
+      <div class="axis-control" data-axis-root="x">
+        <label for="quadrant-x"><strong>${escapeHtml(config.xAxis.label)}</strong></label>
+        <div class="slider-endpoints compact">
+          <div><strong>${escapeHtml(config.xAxis.lowLabel)}</strong><small>${escapeHtml(config.xAxis.lowHint)}</small></div>
+          <div><strong>${escapeHtml(config.xAxis.highLabel)}</strong><small>${escapeHtml(config.xAxis.highHint)}</small></div>
+        </div>
+        <input id="quadrant-x" class="decision-slider" type="range" min="0" max="100" step="1" value="50" data-quadrant-axis="x" data-touched="false">
+      </div>
+      <div class="axis-control" data-axis-root="y">
+        <label for="quadrant-y"><strong>${escapeHtml(config.yAxis.label)}</strong></label>
+        <div class="slider-endpoints compact">
+          <div><strong>${escapeHtml(config.yAxis.lowLabel)}</strong><small>${escapeHtml(config.yAxis.lowHint)}</small></div>
+          <div><strong>${escapeHtml(config.yAxis.highLabel)}</strong><small>${escapeHtml(config.yAxis.highHint)}</small></div>
+        </div>
+        <input id="quadrant-y" class="decision-slider" type="range" min="0" max="100" step="1" value="50" data-quadrant-axis="y" data-touched="false">
+      </div>
+      <div class="response-preview" data-response-preview>
+        <span class="quadrant-dot" aria-hidden="true"></span>
+        <div><strong>現在の方針</strong><p>${escapeHtml(config.summaries[initialKey])}</p></div>
+      </div>
+      <p class="response-note">初期位置による偏りを避けるため、二本とも一度動かしてください。</p>
+      <button class="primary-button structured-submit" type="button" data-action="submit-quadrant" disabled>この方針で決定する</button>
+      ${extraChoices.length ? `
+        <div class="exception-choice">
+          <p><strong>通常の二軸では表せない例外的な方針</strong></p>
+          ${extraChoices.map((choice, index) => choiceCardMarkup(choice, index)).join("")}
+        </div>` : ""}
+    </section>`;
+}
+
+function renderAllocationResponse(scene: ResolvedScene, config: AllocationResponseConfig): string {
+  return `
+    <section class="response-workbench allocation-workbench" data-response-kind="allocation" data-budget="${config.budget}">
+      <div class="response-heading"><h2>資源を配分して回答</h2><p>${escapeHtml(config.prompt)}</p></div>
+      <div class="allocation-status"><span>残り</span><strong data-allocation-remaining>${config.budget}</strong><span>${escapeHtml(config.unitLabel)}</span></div>
+      <div class="allocation-grid">
+        ${config.items.map((item) => `
+          <article class="allocation-item" data-allocation-item="${escapeHtml(item.id)}" data-count="0">
+            <div><strong>${escapeHtml(item.label)}</strong><p>${escapeHtml(item.hint)}</p></div>
+            <div class="allocation-controls">
+              <button type="button" class="allocation-button" data-allocation-change="-1" data-item-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.label)}を1点減らす" disabled>−</button>
+              <span class="allocation-count" data-allocation-count="${escapeHtml(item.id)}">0</span>
+              <button type="button" class="allocation-button" data-allocation-change="1" data-item-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.label)}を1点増やす">＋</button>
+            </div>
+          </article>`).join("")}
+      </div>
+      <div class="response-preview" data-response-preview><div><strong>まだ配分が完了していません</strong><p>すべての点を使うと、選択内容を確認できます。</p></div></div>
+      <button class="primary-button structured-submit" type="button" data-action="submit-allocation" disabled>この配分で決定する</button>
+    </section>`;
+}
+
+function renderRankingResponse(scene: ResolvedScene, config: RankingResponseConfig, state: AppState): string {
+  const configuredChoices = config.choiceIds
+    .map((choiceId) => scene.choices.find((choice) => choice.id === choiceId))
+    .filter((choice): choice is ChoiceDefinition => Boolean(choice));
+  const ordered = deterministicOrder(configuredChoices, `${state.sessionSeed}:${scene.slotId}:ranking`);
+  return `
+    <section class="response-workbench ranking-workbench" data-response-kind="ranking">
+      <div class="response-heading"><h2>優先順位で回答</h2><p>${escapeHtml(config.prompt)}</p></div>
+      <p class="response-note">${escapeHtml(config.instructions)}</p>
+      <ol class="ranking-list" data-ranking-list>
+        ${ordered.map((choice, index) => `
+          <li class="ranking-item" data-choice-id="${escapeHtml(choice.id)}">
+            <span class="ranking-position">${index + 1}</span>
+            <div><strong>${escapeHtml(choice.label)}</strong>${choice.detail ? `<small>${escapeHtml(choice.detail)}</small>` : ""}</div>
+            <div class="ranking-controls">
+              <button type="button" data-rank-move="up" aria-label="上へ移動" ${index === 0 ? "disabled" : ""}>↑</button>
+              <button type="button" data-rank-move="down" aria-label="下へ移動" ${index === ordered.length - 1 ? "disabled" : ""}>↓</button>
+            </div>
+          </li>`).join("")}
+      </ol>
+      <div class="response-preview"><div><strong>最上位の行動を実行</strong><p>二位以下も、あなたが何を次に考えたかを示す補助データとして保存されます。</p></div></div>
+      <button class="primary-button structured-submit" type="button" data-action="submit-ranking">この順位で決定する</button>
+    </section>`;
+}
+
+function renderResponseInterface(scene: ResolvedScene, state: AppState): string {
+  const config = RESPONSE_CONFIGS[scene.slotId];
+  if (!config) {
+    return `<div class="choice-list ui-${escapeHtml(scene.ui)}">${scene.choices.map(choiceCardMarkup).join("")}</div>`;
+  }
+  switch (config.kind) {
+    case "slider": return renderSliderResponse(scene, config);
+    case "quadrant": return renderQuadrantResponse(scene, config);
+    case "allocation": return renderAllocationResponse(scene, config);
+    case "ranking": return renderRankingResponse(scene, config, state);
+  }
+}
+
 function renderScene(): void {
   if (!session) return renderLanding();
   const scene = resolveScene(session.state);
@@ -282,19 +520,10 @@ function renderScene(): void {
             </div>
             <h1>${escapeHtml(scene.title)}</h1>
             <p class="scene-body">${escapeHtml(scene.body)}</p>
-            ${scene.constraint ? `<p class="scene-constraint">${escapeHtml(scene.constraint)}</p>` : ""}
-            <div class="choice-list ui-${escapeHtml(scene.ui)}">
-              ${scene.choices.map((choice, index) => `
-                <button class="choice-card" type="button" data-choice-id="${escapeHtml(choice.id)}">
-                  <span class="choice-key">${choiceLetter(index)}</span>
-                  <span class="choice-copy">
-                    <strong>${escapeHtml(choice.label)}</strong>
-                    ${choice.detail ? `<small>${escapeHtml(choice.detail)}</small>` : ""}
-                  </span>
-                  <span class="choice-arrow" aria-hidden="true">›</span>
-                  ${choice.usesDice ? `<span class="dice-badge">1D100</span>` : ""}
-                </button>`).join("")}
-            </div>
+            ${sceneGuideMarkup(scene)}
+            ${scene.constraint ? `<p class="scene-constraint"><strong>制約：</strong>${escapeHtml(scene.constraint)}</p>` : ""}
+            <p class="answer-principle">最善手を当てる問題ではありません。実際の卓で、あなたが最初に提案したくなる判断を選んでください。</p>
+            ${renderResponseInterface(scene, session.state)}
           </article>
           <div class="play-actions">
             <button class="secondary-button" type="button" data-action="undo" ${session.snapshots.length === 0 ? "disabled" : ""}>一つ前のSceneへ戻る</button>
@@ -323,6 +552,7 @@ function renderOutcome(): void {
             <p class="outcome-kicker">CHOICE RECORDED</p>
             <h1>${escapeHtml(outcome.sceneTitle)}</h1>
             <p class="outcome-choice">選択：${escapeHtml(outcome.choiceLabel)}${outcome.followUpLabel ? `<br>追加決定：${escapeHtml(outcome.followUpLabel)}` : ""}</p>
+            ${outcome.responseSummary ? `<p class="outcome-response-summary">${escapeHtml(outcome.responseSummary)}</p>` : ""}
             <p class="outcome-text">${escapeHtml(outcome.outcome)}</p>
             ${outcome.diceRoll !== undefined ? `
               <div class="dice-result ${outcome.diceSuccess ? "success" : "failure"}">
@@ -539,7 +769,231 @@ function showDialog(content: string): HTMLDialogElement {
   return dialog;
 }
 
-function requestChoice(choiceId: string): void {
+
+function activeStructuredScene(kind: "slider"): { scene: ResolvedScene; config: SliderResponseConfig } | null;
+function activeStructuredScene(kind: "quadrant"): { scene: ResolvedScene; config: QuadrantResponseConfig } | null;
+function activeStructuredScene(kind: "allocation"): { scene: ResolvedScene; config: AllocationResponseConfig } | null;
+function activeStructuredScene(kind: "ranking"): { scene: ResolvedScene; config: RankingResponseConfig } | null;
+function activeStructuredScene(kind: StructuredResponseConfig["kind"]): { scene: ResolvedScene; config: StructuredResponseConfig } | null {
+  if (!session || session.phase !== "scene") return null;
+  const scene = resolveScene(session.state);
+  const config = RESPONSE_CONFIGS[scene.slotId];
+  if (!config || config.kind !== kind) return null;
+  return { scene, config };
+}
+
+function updateSliderWorkbench(input: HTMLInputElement): void {
+  const active = activeStructuredScene("slider");
+  if (!active) return;
+  input.dataset.touched = "true";
+  const value = Number(input.value);
+  const band = sliderBand(active.config, value);
+  const root = input.closest<HTMLElement>("[data-response-kind='slider']");
+  if (!root) return;
+  const valueElement = root.querySelector<HTMLElement>("[data-response-value]");
+  const preview = root.querySelector<HTMLElement>("[data-response-preview]");
+  const submit = root.querySelector<HTMLButtonElement>("[data-action='submit-slider']");
+  if (valueElement) valueElement.textContent = String(value);
+  if (preview) preview.innerHTML = `<span class="response-value">${value}</span><div><strong>${escapeHtml(band.label)}</strong><p>${escapeHtml(band.explanation)}</p></div>`;
+  if (submit) submit.disabled = false;
+}
+
+function submitSliderResponse(): void {
+  const active = activeStructuredScene("slider");
+  const input = document.querySelector<HTMLInputElement>("[data-slider-control]");
+  if (!active || !input || input.dataset.touched !== "true") return;
+  const value = Number(input.value);
+  const band = sliderBand(active.config, value);
+  requestChoice(
+    band.choiceId,
+    {
+      kind: "slider",
+      value,
+      selectedBand: band.choiceId,
+      axisEvidence: {
+        [active.config.minAxis]: -normalizeResponseValue(value),
+        [active.config.maxAxis]: normalizeResponseValue(value)
+      }
+    },
+    `判断位置 ${value}/100：${band.label}。${band.explanation}`
+  );
+}
+
+function updateQuadrantWorkbench(input: HTMLInputElement): void {
+  const active = activeStructuredScene("quadrant");
+  if (!active) return;
+  input.dataset.touched = "true";
+  const root = input.closest<HTMLElement>("[data-response-kind='quadrant']");
+  if (!root) return;
+  const xInput = root.querySelector<HTMLInputElement>("[data-quadrant-axis='x']");
+  const yInput = root.querySelector<HTMLInputElement>("[data-quadrant-axis='y']");
+  if (!xInput || !yInput) return;
+  const x = Number(xInput.value);
+  const y = Number(yInput.value);
+  const key = quadrantKey(x, y);
+  const preview = root.querySelector<HTMLElement>("[data-response-preview]");
+  const submit = root.querySelector<HTMLButtonElement>("[data-action='submit-quadrant']");
+  if (preview) {
+    preview.innerHTML = `<span class="quadrant-dot" style="--x:${x}%;--y:${100 - y}%" aria-hidden="true"></span><div><strong>現在の方針｜${x} / ${y}</strong><p>${escapeHtml(active.config.summaries[key])}</p></div>`;
+  }
+  if (submit) submit.disabled = !(xInput.dataset.touched === "true" && yInput.dataset.touched === "true");
+}
+
+function submitQuadrantResponse(): void {
+  const active = activeStructuredScene("quadrant");
+  const root = document.querySelector<HTMLElement>("[data-response-kind='quadrant']");
+  const xInput = root?.querySelector<HTMLInputElement>("[data-quadrant-axis='x']");
+  const yInput = root?.querySelector<HTMLInputElement>("[data-quadrant-axis='y']");
+  if (!active || !xInput || !yInput) return;
+  if (xInput.dataset.touched !== "true" || yInput.dataset.touched !== "true") return;
+  const x = Number(xInput.value);
+  const y = Number(yInput.value);
+  const key = quadrantKey(x, y);
+  const choiceId = active.config.choices[key];
+  requestChoice(
+    choiceId,
+    {
+      kind: "quadrant",
+      x,
+      y,
+      quadrant: key,
+      axisEvidence: {
+        [active.config.xAxis.axis]: normalizeResponseValue(x),
+        [active.config.yAxis.axis]: normalizeResponseValue(y)
+      }
+    },
+    `${active.config.xAxis.label} ${x}/100、${active.config.yAxis.label} ${y}/100。${active.config.summaries[key]}`
+  );
+}
+
+function allocationValues(root: HTMLElement, config: AllocationResponseConfig): Record<string, number> {
+  const values: Record<string, number> = {};
+  for (const item of config.items) {
+    const element = root.querySelector<HTMLElement>(`[data-allocation-item='${item.id}']`);
+    values[item.id] = Number(element?.dataset.count ?? 0);
+  }
+  return values;
+}
+
+function updateAllocationWorkbench(root: HTMLElement, config: AllocationResponseConfig): void {
+  const values = allocationValues(root, config);
+  const used = Object.values(values).reduce((sum, value) => sum + value, 0);
+  const remaining = config.budget - used;
+  const remainingElement = root.querySelector<HTMLElement>("[data-allocation-remaining]");
+  if (remainingElement) remainingElement.textContent = String(remaining);
+
+  for (const item of config.items) {
+    const count = values[item.id] ?? 0;
+    const countElement = root.querySelector<HTMLElement>(`[data-allocation-count='${item.id}']`);
+    if (countElement) countElement.textContent = String(count);
+    const minus = root.querySelector<HTMLButtonElement>(`[data-item-id='${item.id}'][data-allocation-change='-1']`);
+    const plus = root.querySelector<HTMLButtonElement>(`[data-item-id='${item.id}'][data-allocation-change='1']`);
+    if (minus) minus.disabled = count <= 0;
+    if (plus) plus.disabled = remaining <= 0;
+  }
+
+  const preview = root.querySelector<HTMLElement>("[data-response-preview]");
+  const submit = root.querySelector<HTMLButtonElement>("[data-action='submit-allocation']");
+  if (remaining > 0) {
+    if (preview) preview.innerHTML = `<div><strong>残り${remaining}${escapeHtml(config.unitLabel)}</strong><p>すべての点を使うと決定できます。</p></div>`;
+    if (submit) submit.disabled = true;
+    return;
+  }
+
+  const max = Math.max(...Object.values(values));
+  const dominant = config.items.filter((item) => values[item.id] === max);
+  const summary = dominant.length === 1
+    ? `${dominant[0]!.label}へ最も多く配分`
+    : config.balancedLabel;
+  if (preview) {
+    preview.innerHTML = `<div><strong>${escapeHtml(summary)}</strong><p>${config.items.map((item) => `${escapeHtml(item.label)} ${values[item.id]}${escapeHtml(config.unitLabel)}`).join(" ／ ")}</p></div>`;
+  }
+  if (submit) submit.disabled = false;
+}
+
+function changeAllocation(button: HTMLButtonElement): void {
+  const active = activeStructuredScene("allocation");
+  const root = button.closest<HTMLElement>("[data-response-kind='allocation']");
+  const itemId = button.dataset.itemId;
+  const delta = Number(button.dataset.allocationChange ?? 0);
+  if (!active || !root || !itemId || !delta) return;
+  const item = root.querySelector<HTMLElement>(`[data-allocation-item='${itemId}']`);
+  if (!item) return;
+  const values = allocationValues(root, active.config);
+  const used = Object.values(values).reduce((sum, value) => sum + value, 0);
+  const current = Number(item.dataset.count ?? 0);
+  if (delta > 0 && used >= active.config.budget) return;
+  if (delta < 0 && current <= 0) return;
+  item.dataset.count = String(current + delta);
+  updateAllocationWorkbench(root, active.config);
+}
+
+function submitAllocationResponse(): void {
+  const active = activeStructuredScene("allocation");
+  const root = document.querySelector<HTMLElement>("[data-response-kind='allocation']");
+  if (!active || !root) return;
+  const values = allocationValues(root, active.config);
+  const used = Object.values(values).reduce((sum, value) => sum + value, 0);
+  if (used !== active.config.budget) return;
+  const max = Math.max(...Object.values(values));
+  const dominant = active.config.items.filter((item) => values[item.id] === max);
+  const choiceId = dominant.length === 1 ? dominant[0]!.dominantChoiceId : active.config.balancedChoiceId;
+  const summary = active.config.items.map((item) => `${item.label} ${values[item.id]}${active.config.unitLabel}`).join("、");
+  requestChoice(
+    choiceId,
+    {
+      kind: "allocation",
+      budget: active.config.budget,
+      allocations: values,
+      axisEvidence: allocationAxisEvidence(active.scene, active.config, values)
+    },
+    `資源配分：${summary}。${dominant.length === 1 ? `${dominant[0]!.label}を最優先` : active.config.balancedLabel}。`
+  );
+}
+
+function refreshRankingList(list: HTMLOListElement): void {
+  const items = [...list.querySelectorAll<HTMLElement>("[data-choice-id]")];
+  items.forEach((item, index) => {
+    const position = item.querySelector<HTMLElement>(".ranking-position");
+    if (position) position.textContent = String(index + 1);
+    const up = item.querySelector<HTMLButtonElement>("[data-rank-move='up']");
+    const down = item.querySelector<HTMLButtonElement>("[data-rank-move='down']");
+    if (up) up.disabled = index === 0;
+    if (down) down.disabled = index === items.length - 1;
+  });
+}
+
+function moveRankingItem(button: HTMLButtonElement): void {
+  const list = button.closest<HTMLOListElement>("[data-ranking-list]");
+  const item = button.closest<HTMLElement>("[data-choice-id]");
+  if (!list || !item) return;
+  const direction = button.dataset.rankMove;
+  if (direction === "up" && item.previousElementSibling) {
+    list.insertBefore(item, item.previousElementSibling);
+  } else if (direction === "down" && item.nextElementSibling) {
+    list.insertBefore(item.nextElementSibling, item);
+  }
+  refreshRankingList(list);
+}
+
+function submitRankingResponse(): void {
+  const active = activeStructuredScene("ranking");
+  const list = document.querySelector<HTMLOListElement>("[data-ranking-list]");
+  if (!active || !list) return;
+  const order = [...list.querySelectorAll<HTMLElement>("[data-choice-id]")]
+    .map((item) => item.dataset.choiceId)
+    .filter((value): value is string => Boolean(value));
+  const top = order[0];
+  if (!top) return;
+  const labels = order.map((choiceId) => active.scene.choices.find((choice) => choice.id === choiceId)?.label ?? choiceId);
+  requestChoice(
+    top,
+    { kind: "ranking", order, axisEvidence: rankingAxisEvidence(active.scene, order) },
+    `優先順位：${labels.map((label, index) => `${index + 1}. ${label}`).join(" ／ ")}`
+  );
+}
+
+function requestChoice(choiceId: string, responseMetadata: ResponseMetadata = { kind: "choice" }, responseSummary?: string): void {
   if (!session || session.phase !== "scene") return;
   const scene = resolveScene(session.state);
   const choice = scene.choices.find((candidate) => candidate.id === choiceId);
@@ -557,7 +1011,7 @@ function requestChoice(choiceId: string): void {
       button.addEventListener("click", () => {
         const followUpId = button.dataset.followUp;
         dialog.close();
-        if (followUpId) commitChoice(choiceId, followUpId);
+        if (followUpId) commitChoice(choiceId, followUpId, responseMetadata, responseSummary);
       });
     });
     dialog.querySelector<HTMLButtonElement>("[data-close-dialog]")?.addEventListener("click", () => dialog.close());
@@ -567,6 +1021,7 @@ function requestChoice(choiceId: string): void {
   const dialog = showDialog(`
     <h2>この行動を選びますか？</h2>
     <p><strong>${escapeHtml(choice.label)}</strong></p>
+    ${responseSummary ? `<p class="dialog-response-summary">${escapeHtml(responseSummary)}</p>` : ""}
     ${choice.detail ? `<p>${escapeHtml(choice.detail)}</p>` : ""}
     ${choice.usesDice ? `<p class="dice-badge">この選択では1D100を一度だけ振ります。戻って同じ選択をしても出目は変わりません。</p>` : ""}
     <div class="dialog-actions">
@@ -576,14 +1031,14 @@ function requestChoice(choiceId: string): void {
   dialog.querySelector<HTMLButtonElement>("[data-close-dialog]")?.addEventListener("click", () => dialog.close());
   dialog.querySelector<HTMLButtonElement>("[data-confirm-choice]")?.addEventListener("click", () => {
     dialog.close();
-    commitChoice(choiceId);
+    commitChoice(choiceId, undefined, responseMetadata, responseSummary);
   });
 }
 
-function commitChoice(choiceId: string, followUpOptionId?: string): void {
+function commitChoice(choiceId: string, followUpOptionId?: string, responseMetadata: ResponseMetadata = { kind: "choice" }, responseSummary?: string): void {
   if (!session) return;
   const snapshot = cloneState(session.state);
-  const result = applyChoice(session.state, choiceId, followUpOptionId);
+  const result = applyChoice(session.state, choiceId, followUpOptionId, undefined, responseMetadata);
   session.snapshots.push(snapshot);
   session.state = result.state;
   const pending: PendingOutcome = {
@@ -596,6 +1051,7 @@ function commitChoice(choiceId: string, followUpOptionId?: string): void {
   if (result.followUpOption) pending.followUpLabel = result.followUpOption.label;
   if (result.diceRoll !== undefined) pending.diceRoll = result.diceRoll;
   if (result.diceSuccess !== undefined) pending.diceSuccess = result.diceSuccess;
+  if (responseSummary) pending.responseSummary = responseSummary;
   session.pendingOutcome = pending;
   session.phase = "outcome";
   persist();
@@ -730,7 +1186,7 @@ function exportLog(): void {
   const ending = determineEnding(session.state);
   const payload = {
     appVersion: APP_CONFIG.version,
-    coreVersion: "0.5.0",
+    coreVersion: "0.6.0",
     exportedAt: currentDateTime(),
     sessionId: session.state.sessionSeed,
     ending,
@@ -785,11 +1241,25 @@ function showToast(message: string): void {
 
 app.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
-  const choiceButton = target.closest<HTMLButtonElement>("[data-choice-id]");
+
+  const allocationButton = target.closest<HTMLButtonElement>("button[data-allocation-change]");
+  if (allocationButton) {
+    changeAllocation(allocationButton);
+    return;
+  }
+
+  const rankButton = target.closest<HTMLButtonElement>("button[data-rank-move]");
+  if (rankButton) {
+    moveRankingItem(rankButton);
+    return;
+  }
+
+  const choiceButton = target.closest<HTMLButtonElement>("button[data-choice-id]");
   if (choiceButton?.dataset.choiceId) {
     requestChoice(choiceButton.dataset.choiceId);
     return;
   }
+
   const actionButton = target.closest<HTMLElement>("[data-action]");
   const action = actionButton?.dataset.action;
   if (!action) return;
@@ -801,11 +1271,24 @@ app.addEventListener("click", (event) => {
     case "undo": undoLastChoice(); break;
     case "restart": confirmRestart(); break;
     case "clear": confirmClear(); break;
+    case "submit-slider": submitSliderResponse(); break;
+    case "submit-quadrant": submitQuadrantResponse(); break;
+    case "submit-allocation": submitAllocationResponse(); break;
+    case "submit-ranking": submitRankingResponse(); break;
     case "download-image": void downloadResultImage().catch((error) => showToast(String(error))); break;
     case "share-result": void shareResult().catch((error) => showToast(String(error))); break;
     case "copy-result": void copyResult().catch((error) => showToast(String(error))); break;
     case "export-log": exportLog(); break;
   }
+});
+
+app.addEventListener("input", (event) => {
+  const input = event.target as HTMLInputElement;
+  if (input.matches("[data-slider-control]")) {
+    updateSliderWorkbench(input);
+    return;
+  }
+  if (input.matches("[data-quadrant-axis]")) updateQuadrantWorkbench(input);
 });
 
 app.addEventListener("submit", (event) => {
@@ -822,6 +1305,7 @@ document.addEventListener("keydown", (event) => {
   const index = Number(event.key) - 1;
   if (!Number.isInteger(index) || index < 0 || index > 8) return;
   const scene = resolveScene(session.state);
+  if (RESPONSE_CONFIGS[scene.slotId]) return;
   const choice = scene.choices[index];
   if (choice) requestChoice(choice.id);
 });
