@@ -28,6 +28,7 @@ import {
   type StructuredResponseConfig
 } from "./core/responseConfigs.js";
 import { SCENE_GUIDES } from "./core/sceneGuides.js";
+import { READ_ALOUD_TEXT } from "./core/readAloud.js";
 import { SCENE_BY_SLOT } from "./core/scenes.js";
 import type { AppState, ChoiceDefinition, DiagnosticWeights, EndingDefinition, ResolvedScene, ResponseMetadata } from "./core/types.js";
 import { sendCompletedDiagnosis, sendOptionalSurvey } from "./logging.js";
@@ -293,25 +294,22 @@ function choiceCardMarkup(choice: ChoiceDefinition, index: number): string {
     </button>`;
 }
 
+function readAloudMarkup(scene: ResolvedScene): string {
+  const text = READ_ALOUD_TEXT[scene.slotId] ?? scene.body;
+  const paragraphs = text.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
+  return `<div class="read-aloud-copy">${paragraphs.map((paragraph) => `<p class="scene-body">${escapeHtml(paragraph)}</p>`).join("")}</div>`;
+}
+
 function sceneGuideMarkup(scene: ResolvedScene): string {
   const guide = SCENE_GUIDES[scene.slotId];
   return `
-    <section class="scene-guide" aria-label="状況整理">
-      <div class="scene-guide-heading">
-        <span class="guide-label">今回の目的</span>
-        <strong>${escapeHtml(guide.objective)}</strong>
-      </div>
+    <section class="scene-guide" aria-label="確認できること">
       <div class="scene-guide-grid">
         <div>
-          <h2>確認できていること</h2>
+          <h2>確認できること</h2>
           <ul>${guide.knownFacts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join("")}</ul>
         </div>
-        <div>
-          <h2>この判断で変わること</h2>
-          <p>${escapeHtml(guide.stakes)}</p>
-        </div>
       </div>
-      <p class="decision-prompt"><strong>判断：</strong>${escapeHtml(guide.decisionPrompt)}</p>
       ${guide.glossary?.length ? `
         <details class="scene-glossary">
           <summary>用語の補足</summary>
@@ -526,10 +524,9 @@ function renderScene(): void {
               <span class="state-badge">ACT ${scene.act}</span>
             </div>
             <h1>${escapeHtml(scene.title)}</h1>
-            <p class="scene-body">${escapeHtml(scene.body)}</p>
+            ${readAloudMarkup(scene)}
             ${sceneGuideMarkup(scene)}
-            ${scene.constraint ? `<p class="scene-constraint"><strong>制約：</strong>${escapeHtml(scene.constraint)}</p>` : ""}
-            <p class="answer-principle">最善手を当てる問題ではありません。実際の卓で、あなたが最初に提案したくなる判断を選んでください。</p>
+            <h2 class="decision-heading">どうする？</h2>
             ${renderResponseInterface(scene, session.state)}
           </article>
           <div class="play-actions">
