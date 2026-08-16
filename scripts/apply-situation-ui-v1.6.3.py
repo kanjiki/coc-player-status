@@ -42,7 +42,7 @@ new = '''function remainingTimeLabel(state: AppState): string {
 
 function investigationPanel(state: AppState): string {
   const atmosphere = getAtmosphere(state);
-  const guide = SCENE_GUIDES[state.story.currentSlot];
+  const guide = SCENE_GUIDES[state.story.currentSlot as keyof typeof SCENE_GUIDES];
   return `
     <aside class="investigation-panel" aria-label="現在の状況">
       <h2>現在の状況</h2>
@@ -84,7 +84,6 @@ for file_name in ('package.json', 'public/site-config.js'):
         raise SystemExit(f'version marker missing in {file_name}')
     path.write_text(text, encoding='utf-8')
 
-# Regression guard: no internal time-unit count should be exposed in the panel.
 test = Path('tests/situation-panel.test.mjs')
 test.write_text('''import test from "node:test";\nimport assert from "node:assert/strict";\nimport fs from "node:fs";\n\nconst app = fs.readFileSync("src/app.ts", "utf8");\n\ntest("situation panel uses plain-language labels", () => {\n  for (const phrase of ["現在の状況", "いまの目的", "いまいる場所", "一緒にいる人", "連絡が取れる人", "残り調査猶予", "いま確認できている異常"]) {\n    assert.ok(app.includes(phrase), `missing: ${phrase}`);\n  }\n  assert.ok(!app.includes("return `猶予 ${state.story.timeUnits}`"));\n});\n''', encoding='utf-8')
 
